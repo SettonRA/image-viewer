@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  image-viewer:
+    build: .
+    container_name: image-viewer
+    ports:
+      - "3005:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - ./images:/app/images
+    init: true
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,0 +1,13 @@
+{
+  "name": "image-viewer",
+  "version": "1.0.0",
+  "description": "Web-based image gallery for browsing AI-generated images",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

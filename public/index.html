@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Viewer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Image Viewer</h1>
+    <div class="toolbar">
+      <span id="image-count"></span>
+      <div class="sort-controls">
+        <label for="sort-select">Sort:</label>
+        <select id="sort-select">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="name-asc">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div id="gallery" class="gallery"></div>
+    <div id="empty-state" class="empty-state hidden">
+      <p>No images found. Drop some images into the <code>images/</code> folder.</p>
+    </div>
+  </main>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox hidden">
+    <button id="lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
+    <button id="lightbox-prev" class="lightbox-nav lightbox-prev" aria-label="Previous">&#8249;</button>
+    <button id="lightbox-next" class="lightbox-nav lightbox-next" aria-label="Next">&#8250;</button>
+    <div class="lightbox-content">
+      <img id="lightbox-img" src="" alt="" />
+      <video id="lightbox-video" controls playsinline></video>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
