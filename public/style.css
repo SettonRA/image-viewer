@@ -149,16 +149,14 @@ main {
 
 .lightbox-content {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  width: 95vw;
-  height: 95vh;
+  justify-content: center;
 }
 
 .lightbox-content img,
 .lightbox-content video {
-  width: 100%;
-  height: 100%;
+  width: 95vw;
+  height: 95vh;
   object-fit: contain;
   border-radius: var(--radius);
   box-shadow: 0 0 60px rgba(0,0,0,0.8);
