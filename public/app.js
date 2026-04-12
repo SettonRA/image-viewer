@@ -117,8 +117,8 @@ function showLightboxImage() {
     lightboxImg.alt = image.name;
   }
 
-  lightboxPrev.style.display = lightboxIndex === 0 ? 'none' : '';
-  lightboxNext.style.display = lightboxIndex === filteredImages.length - 1 ? 'none' : '';
+  lightboxPrev.classList.toggle('nav-hidden', lightboxIndex === 0);
+  lightboxNext.classList.toggle('nav-hidden', lightboxIndex === filteredImages.length - 1);
 }
 
 function prevImage() {
@@ -134,6 +134,24 @@ function nextImage() {
     showLightboxImage();
   }
 }
+
+// Swipe gesture support
+let touchStartX = 0;
+let touchStartY = 0;
+
+lightbox.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+lightbox.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  // Require a mostly-horizontal swipe of at least 40px
+  if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+  if (dx < 0) nextImage();
+  else prevImage();
+}, { passive: true });
 
 // Event listeners
 sortSelect.addEventListener('change', renderGallery);

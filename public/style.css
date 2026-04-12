@@ -145,7 +145,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 60px; /* space for nav buttons and close button */
+  padding: 40px 0; /* top for close button; zones overlay sides */
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -186,32 +186,41 @@ main {
   opacity: 1;
 }
 
-.lightbox-nav {
+/* Tap zones for prev/next navigation */
+.lightbox-zone {
   position: fixed;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  color: var(--text);
-  font-size: 2.5rem;
-  line-height: 1;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
+  top: 0;
+  bottom: 80px; /* leave bottom clear for video controls */
+  width: 28%;
+  z-index: 1001;
   cursor: pointer;
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
-  z-index: 1001;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.lightbox-nav:hover {
-  background: rgba(255,255,255,0.18);
+.lightbox-zone span {
+  font-size: 4rem;
+  color: rgba(255, 255, 255, 0);
+  transition: color 0.2s;
+  pointer-events: none;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(0,0,0,0.6);
 }
 
-.lightbox-prev { left: 16px; }
-.lightbox-next { right: 16px; }
+.lightbox-zone:hover span,
+.lightbox-zone:active span {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.lightbox-zone.nav-hidden {
+  pointer-events: none;
+  cursor: default;
+}
+
+.lightbox-prev { left: 0; justify-content: flex-start; padding-left: 12px; }
+.lightbox-next { right: 0; justify-content: flex-end; padding-right: 12px; }
 
 @media (max-width: 600px) {
   .gallery {
