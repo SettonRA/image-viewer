@@ -190,28 +190,12 @@ main {
 .lightbox-zone {
   position: fixed;
   top: 0;
-  bottom: 80px; /* leave bottom clear for video controls */
+  bottom: 80px;
   width: 28%;
   z-index: 1001;
   cursor: pointer;
-  display: flex;
-  align-items: center;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-}
-
-.lightbox-zone span {
-  font-size: 4rem;
-  color: rgba(255, 255, 255, 0);
-  transition: color 0.2s;
-  pointer-events: none;
-  line-height: 1;
-  text-shadow: 0 0 12px rgba(0,0,0,0.6);
-}
-
-.lightbox-zone:hover span,
-.lightbox-zone:active span {
-  color: rgba(255, 255, 255, 0.65);
 }
 
 .lightbox-zone.nav-hidden {
@@ -219,8 +203,8 @@ main {
   cursor: default;
 }
 
-.lightbox-prev { left: 0; justify-content: flex-start; padding-left: 12px; }
-.lightbox-next { right: 0; justify-content: flex-end; padding-right: 12px; }
+.lightbox-prev { left: 0; }
+.lightbox-next { right: 0; }
 
 @media (max-width: 600px) {
   .gallery {
