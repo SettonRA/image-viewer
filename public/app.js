@@ -104,7 +104,6 @@ function closeLightbox() {
   lightboxVideo.pause();
   lightboxVideo.src = '';
 }
-}
 
 function showLightboxImage() {
   const image = filteredImages[lightboxIndex];
