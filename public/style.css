@@ -145,18 +145,23 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 40px 60px; /* space for nav buttons and close button */
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .lightbox-content {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 .lightbox-content img,
 .lightbox-content video {
-  width: 95vw;
-  height: 95vh;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   border-radius: var(--radius);
   box-shadow: 0 0 60px rgba(0,0,0,0.8);
