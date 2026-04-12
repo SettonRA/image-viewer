@@ -107,6 +107,7 @@ function showLightboxImage() {
     lightboxVideo.classList.remove('hidden');
     lightboxVideo.src = image.url;
     lightboxVideo.load();
+    lightboxVideo.play().catch(() => {});
   } else {
     lightboxVideo.pause();
     lightboxVideo.src = '';
