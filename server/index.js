@@ -1,18 +1,19 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { execFile } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const IMAGES_DIR = path.join(__dirname, '..', 'images');
+const THUMBS_DIR = path.join(__dirname, '..', 'thumbnails');
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.avif']);
 const VIDEO_EXTENSIONS = new Set(['.mp4']);
 
-// Ensure images directory exists
-if (!fs.existsSync(IMAGES_DIR)) {
-  fs.mkdirSync(IMAGES_DIR, { recursive: true });
-}
+// Ensure directories exist
+if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
+if (!fs.existsSync(THUMBS_DIR)) fs.mkdirSync(THUMBS_DIR, { recursive: true });
 
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -63,6 +64,39 @@ app.get('/images/:filename', (req, res) => {
       });
       fs.createReadStream(filePath).pipe(res);
     }
+  });
+});
+
+// Serve thumbnails directory
+app.use('/thumbnails', express.static(THUMBS_DIR));
+
+// Generate and serve video thumbnails on demand
+app.get('/thumbnails/:filename', (req, res) => {
+  const baseName = path.basename(decodeURIComponent(req.params.filename));
+  const thumbPath = path.join(THUMBS_DIR, baseName);
+
+  if (fs.existsSync(thumbPath)) {
+    return res.sendFile(thumbPath);
+  }
+
+  // Strip .jpg suffix added by client to find the source video
+  const videoName = baseName.replace(/\.jpg$/, '');
+  const videoPath = path.join(IMAGES_DIR, videoName);
+
+  if (!fs.existsSync(videoPath)) return res.status(404).end();
+
+  execFile('ffmpeg', [
+    '-i', videoPath,
+    '-ss', '00:00:01',
+    '-vframes', '1',
+    '-vf', 'scale=600:-1',
+    '-f', 'image2',
+    thumbPath,
+  ], (err) => {
+    if (err || !fs.existsSync(thumbPath)) {
+      return res.status(500).end();
+    }
+    res.sendFile(thumbPath);
   });
 });
 

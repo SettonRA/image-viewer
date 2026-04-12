@@ -1,5 +1,7 @@
 node_modules/
 images/*
 !images/.gitkeep
+thumbnails/*
+!thumbnails/.gitkeep
 .env
 *.log

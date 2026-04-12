@@ -9,6 +9,7 @@ services:
       - PORT=3000
     volumes:
       - ./images:/app/images
+      - ./thumbnails:/app/thumbnails
     init: true
     restart: unless-stopped
     logging:

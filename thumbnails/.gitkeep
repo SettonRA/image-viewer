@@ -1,0 +1,1 @@
+Generated video thumbnails are stored here. This directory is volume-mounted and persists across container restarts.

@@ -59,11 +59,11 @@ function renderGallery() {
 
     let media;
     if (image.type === 'video') {
-      media = document.createElement('video');
-      media.src = image.url;
-      media.muted = true;
-      media.preload = 'metadata';
-      media.playsInline = true;
+      media = document.createElement('img');
+      media.src = `/thumbnails/${encodeURIComponent(image.name)}.jpg`;
+      media.alt = image.name;
+      media.loading = 'lazy';
+      media.decoding = 'async';
       item.classList.add('is-video');
     } else {
       media = document.createElement('img');
