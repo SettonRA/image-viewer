@@ -90,14 +90,20 @@ function openLightbox(index) {
   showLightboxImage();
   lightbox.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  const el = lightbox;
+  (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || (() => {})).call(el);
 }
 
 function closeLightbox() {
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+  }
   lightbox.classList.add('hidden');
   document.body.style.overflow = '';
   lightboxImg.src = '';
   lightboxVideo.pause();
   lightboxVideo.src = '';
+}
 }
 
 function showLightboxImage() {
@@ -134,6 +140,26 @@ function nextImage() {
     showLightboxImage();
   }
 }
+
+// Close lightbox if user exits fullscreen via browser controls
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && !lightbox.classList.contains('hidden')) {
+    lightbox.classList.add('hidden');
+    document.body.style.overflow = '';
+    lightboxImg.src = '';
+    lightboxVideo.pause();
+    lightboxVideo.src = '';
+  }
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  if (!document.webkitFullscreenElement && !lightbox.classList.contains('hidden')) {
+    lightbox.classList.add('hidden');
+    document.body.style.overflow = '';
+    lightboxImg.src = '';
+    lightboxVideo.pause();
+    lightboxVideo.src = '';
+  }
+});
 
 // Swipe gesture support
 let touchStartX = 0;
