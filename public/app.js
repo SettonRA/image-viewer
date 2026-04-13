@@ -51,6 +51,9 @@ function renderGallery() {
   imageCount.textContent = `${filteredImages.length} image${filteredImages.length !== 1 ? 's' : ''}`;
 
   filteredImages.forEach((image, index) => {
+    const card = document.createElement('div');
+    card.className = 'gallery-card';
+
     const item = document.createElement('div');
     item.className = 'gallery-item';
     item.setAttribute('role', 'button');
@@ -74,13 +77,22 @@ function renderGallery() {
     }
 
     item.appendChild(media);
-
     item.addEventListener('click', () => openLightbox(index));
     item.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') openLightbox(index);
     });
 
-    gallery.appendChild(item);
+    const dlBtn = document.createElement('a');
+    dlBtn.className = 'download-btn';
+    dlBtn.href = image.url;
+    dlBtn.download = image.name;
+    dlBtn.setAttribute('aria-label', `Download ${image.name}`);
+    dlBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
+    dlBtn.addEventListener('click', e => e.stopPropagation());
+
+    card.appendChild(item);
+    card.appendChild(dlBtn);
+    gallery.appendChild(card);
   });
 }
 

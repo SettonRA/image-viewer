@@ -85,15 +85,40 @@ main {
   gap: 12px;
 }
 
+.gallery-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
 .gallery-item {
   position: relative;
   aspect-ratio: 1;
   overflow: hidden;
-  border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--border);
   cursor: pointer;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s ease;
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  background: var(--surface);
+  transition: color 0.15s, background 0.15s;
+  border-top: 1px solid var(--border);
+}
+
+.download-btn:hover {
+  color: var(--text);
+  background: var(--border);
 }
 
 .gallery-item.is-video::after {
