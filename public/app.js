@@ -246,14 +246,18 @@ function renderGallery() {
   });
 }
 
+const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
+
 // Lightbox
 function openLightbox(index) {
   lightboxIndex = index;
   showLightboxImage();
   lightbox.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
-  const el = lightbox;
-  (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || (() => {})).call(el);
+  if (isTouchDevice()) {
+    const el = lightbox;
+    (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || (() => {})).call(el);
+  }
 }
 
 function closeLightbox() {
@@ -302,8 +306,9 @@ function nextImage() {
   }
 }
 
-// Close lightbox if user exits fullscreen via browser controls
+// Close lightbox if user exits fullscreen via browser controls (touch only)
 document.addEventListener('fullscreenchange', () => {
+  if (!isTouchDevice()) return;
   if (!document.fullscreenElement && !lightbox.classList.contains('hidden')) {
     lightbox.classList.add('hidden');
     document.body.style.overflow = '';
@@ -313,6 +318,7 @@ document.addEventListener('fullscreenchange', () => {
   }
 });
 document.addEventListener('webkitfullscreenchange', () => {
+  if (!isTouchDevice()) return;
   if (!document.webkitFullscreenElement && !lightbox.classList.contains('hidden')) {
     lightbox.classList.add('hidden');
     document.body.style.overflow = '';
