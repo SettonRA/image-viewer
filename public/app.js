@@ -16,6 +16,10 @@ const dropOverlay = document.getElementById('drop-overlay');
 const toast = document.getElementById('toast');
 const storageBar = document.getElementById('storage-bar');
 const storageText = document.getElementById('storage-text');
+const confirmModal = document.getElementById('confirm-modal');
+const confirmFilename = document.getElementById('confirm-filename');
+const confirmCancel = document.getElementById('confirm-cancel');
+const confirmDelete = document.getElementById('confirm-delete');
 
 const ALLOWED_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'mp4']);
 
@@ -105,6 +109,49 @@ function showToast(message, type = 'info') {
   toastTimer = setTimeout(() => { toast.className = 'toast hidden'; }, 4000);
 }
 
+// ── Delete confirmation ──────────────────────────────────────────────────────
+
+let pendingDeleteName = null;
+
+function promptDelete(filename) {
+  pendingDeleteName = filename;
+  confirmFilename.textContent = filename;
+  confirmModal.classList.remove('hidden');
+  confirmDelete.focus();
+}
+
+function closeConfirmModal() {
+  pendingDeleteName = null;
+  confirmModal.classList.add('hidden');
+}
+
+confirmCancel.addEventListener('click', closeConfirmModal);
+confirmModal.addEventListener('click', e => {
+  if (e.target === confirmModal) closeConfirmModal();
+});
+document.addEventListener('keydown', e => {
+  if (!confirmModal.classList.contains('hidden') && e.key === 'Escape') closeConfirmModal();
+});
+
+confirmDelete.addEventListener('click', async () => {
+  if (!pendingDeleteName) return;
+  const name = pendingDeleteName;
+  closeConfirmModal();
+
+  try {
+    const res = await fetch(`/api/images/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Delete failed');
+    }
+    showToast(`Deleted "${name}"`, 'success');
+    await loadImages();
+    loadStorageInfo();
+  } catch (err) {
+    showToast(err.message || 'Delete failed. Please try again.', 'error');
+  }
+});
+
 // Fetch images from API
 async function loadImages() {
   try {
@@ -182,8 +229,19 @@ function renderGallery() {
     dlBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download';
     dlBtn.addEventListener('click', e => e.stopPropagation());
 
+    const delBtn = document.createElement('button');
+    delBtn.className = 'delete-btn';
+    delBtn.setAttribute('aria-label', `Delete ${image.name}`);
+    delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Delete';
+    delBtn.addEventListener('click', e => { e.stopPropagation(); promptDelete(image.name); });
+
+    const cardActions = document.createElement('div');
+    cardActions.className = 'card-actions';
+    cardActions.appendChild(dlBtn);
+    cardActions.appendChild(delBtn);
+
     card.appendChild(item);
-    card.appendChild(dlBtn);
+    card.appendChild(cardActions);
     gallery.appendChild(card);
   });
 }

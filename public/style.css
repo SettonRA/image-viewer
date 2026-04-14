@@ -113,12 +113,41 @@ main {
   text-decoration: none;
   background: var(--surface);
   transition: color 0.15s, background 0.15s;
-  border-top: 1px solid var(--border);
+  flex: 1;
 }
 
 .download-btn:hover {
   color: var(--text);
   background: var(--border);
+}
+
+.card-actions {
+  display: flex;
+  border-top: 1px solid var(--border);
+}
+
+.card-actions .download-btn {
+  border-right: 1px solid var(--border);
+}
+
+.delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  font-family: inherit;
+}
+
+.delete-btn:hover {
+  color: #e07070;
+  background: #3a1e1e;
 }
 
 .gallery-item.is-video::after {
@@ -329,3 +358,78 @@ main {
 .toast-info    { background: #2a2a3a; color: var(--text); border: 1px solid var(--border); }
 .toast-success { background: #1e3a2a; color: #6dd98c; border: 1px solid #2e6a44; }
 .toast-error   { background: #3a1e1e; color: #e07070; border: 1px solid #6a2e2e; }
+
+/* Confirm delete modal */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.confirm-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  max-width: 380px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+}
+
+.confirm-box h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.confirm-filename {
+  font-size: 0.82rem;
+  color: var(--accent-hover);
+  word-break: break-all;
+  font-family: monospace;
+}
+
+.confirm-body {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.confirm-btn {
+  padding: 7px 18px;
+  border-radius: 5px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.confirm-btn-cancel {
+  background: var(--border);
+  color: var(--text);
+}
+
+.confirm-btn-cancel:hover { background: #3a3a3a; }
+
+.confirm-btn-delete {
+  background: #6a2e2e;
+  color: #e07070;
+}
+
+.confirm-btn-delete:hover { background: #8a3a3a; color: #f09090; }

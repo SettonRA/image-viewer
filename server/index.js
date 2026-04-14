@@ -195,6 +195,37 @@ app.get('/api/images', (req, res) => {
   }
 });
 
+// API: delete an image by filename
+app.delete('/api/images/:filename', (req, res) => {
+  const filename = path.basename(decodeURIComponent(req.params.filename));
+  const filePath = path.join(IMAGES_DIR, filename);
+
+  // Prevent path traversal
+  if (!filePath.startsWith(IMAGES_DIR + path.sep) && filePath !== IMAGES_DIR) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const ext = path.extname(filename).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return res.status(400).json({ error: 'File type not allowed' });
+  }
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  try {
+    fs.unlinkSync(filePath);
+    // Also remove thumbnail if it exists
+    const thumbPath = path.join(THUMBS_DIR, `${filename}.jpg`);
+    if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+    res.json({ deleted: filename });
+  } catch (err) {
+    console.error('Error deleting file:', err);
+    res.status(500).json({ error: 'Failed to delete file' });
+  }
+});
+
 // API: upload images via multipart/form-data
 app.post('/api/upload', (req, res) => {
   upload.array('files', 50)(req, res, (err) => {
