@@ -276,6 +276,13 @@ main {
   }
 }
 
+/* Hide download/delete on touch devices (phones, tablets, foldables) */
+@media (pointer: coarse) {
+  .card-actions {
+    display: none;
+  }
+}
+
 /* Storage meter */
 .storage-meter {
   display: flex;
