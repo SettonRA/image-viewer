@@ -242,3 +242,90 @@ main {
     align-items: flex-start;
   }
 }
+
+/* Storage meter */
+.storage-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.storage-bar-track {
+  width: 120px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.storage-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+.storage-bar.warning { background: #c9892a; }
+.storage-bar.danger  { background: #c93c3c; }
+
+.storage-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Drop overlay */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.drop-overlay-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: var(--text);
+  border: 2px dashed var(--accent);
+  border-radius: 16px;
+  padding: 48px 64px;
+  background: rgba(124, 92, 191, 0.12);
+}
+
+.drop-overlay-inner svg {
+  color: var(--accent);
+  opacity: 0.9;
+}
+
+.drop-overlay-inner p {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 500;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.toast-info    { background: #2a2a3a; color: var(--text); border: 1px solid var(--border); }
+.toast-success { background: #1e3a2a; color: #6dd98c; border: 1px solid #2e6a44; }
+.toast-error   { background: #3a1e1e; color: #e07070; border: 1px solid #6a2e2e; }

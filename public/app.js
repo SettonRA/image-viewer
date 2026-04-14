@@ -12,6 +12,98 @@ const lightboxVideo = document.getElementById('lightbox-video');
 const lightboxClose = document.getElementById('lightbox-close');
 const lightboxPrev = document.getElementById('lightbox-prev');
 const lightboxNext = document.getElementById('lightbox-next');
+const dropOverlay = document.getElementById('drop-overlay');
+const toast = document.getElementById('toast');
+const storageBar = document.getElementById('storage-bar');
+const storageText = document.getElementById('storage-text');
+
+const ALLOWED_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'mp4']);
+
+// ── Storage meter ────────────────────────────────────────────────────────────
+
+async function loadStorageInfo() {
+  try {
+    const res = await fetch('/api/storage');
+    if (!res.ok) return;
+    const { total, used, free } = await res.json();
+    if (!total) return;
+    const pct = Math.min(100, Math.round((used / total) * 100));
+    const freeGB  = (free  / 1073741824).toFixed(1);
+    const totalGB = (total / 1073741824).toFixed(1);
+    storageBar.style.width = `${pct}%`;
+    storageBar.className = 'storage-bar' + (pct > 90 ? ' danger' : pct > 70 ? ' warning' : '');
+    storageText.textContent = `${freeGB} GB free of ${totalGB} GB`;
+    document.getElementById('storage-meter').classList.remove('hidden');
+  } catch {
+    // Storage meter is non-critical — silently ignore
+  }
+}
+
+// ── Drag & drop upload ───────────────────────────────────────────────────────
+
+let dragCounter = 0;
+
+document.addEventListener('dragenter', e => {
+  if (!e.dataTransfer.types.includes('Files')) return;
+  dragCounter++;
+  dropOverlay.classList.remove('hidden');
+});
+
+document.addEventListener('dragleave', () => {
+  dragCounter = Math.max(0, dragCounter - 1);
+  if (dragCounter === 0) dropOverlay.classList.add('hidden');
+});
+
+document.addEventListener('dragover', e => e.preventDefault());
+
+document.addEventListener('drop', async e => {
+  e.preventDefault();
+  dragCounter = 0;
+  dropOverlay.classList.add('hidden');
+
+  const files = Array.from(e.dataTransfer.files).filter(f => {
+    const ext = f.name.split('.').pop().toLowerCase();
+    return ALLOWED_EXTS.has(ext);
+  });
+
+  if (files.length === 0) {
+    showToast('No supported image or video files found.', 'error');
+    return;
+  }
+
+  await uploadFiles(files);
+});
+
+async function uploadFiles(files) {
+  showToast(`Uploading ${files.length} file${files.length !== 1 ? 's' : ''}…`, 'info');
+  const formData = new FormData();
+  files.forEach(f => formData.append('files', f));
+
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Upload failed');
+    }
+    const data = await res.json();
+    showToast(`Uploaded ${data.count} file${data.count !== 1 ? 's' : ''} successfully.`, 'success');
+    await loadImages();
+    loadStorageInfo();
+  } catch (err) {
+    showToast(err.message || 'Upload failed. Please try again.', 'error');
+  }
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+
+let toastTimer;
+
+function showToast(message, type = 'info') {
+  toast.textContent = message;
+  toast.className = `toast toast-${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.className = 'toast hidden'; }, 4000);
+}
 
 // Fetch images from API
 async function loadImages() {
@@ -209,3 +301,4 @@ document.addEventListener('keydown', e => {
 
 // Init
 loadImages();
+loadStorageInfo();
