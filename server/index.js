@@ -8,10 +8,26 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const IMAGES_DIR = path.join(__dirname, '..', 'images');
 const THUMBS_DIR = path.join(__dirname, '..', 'thumbnails');
+const FAVORITES_FILE = path.join(IMAGES_DIR, '.favorites.json');
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.avif']);
 const VIDEO_EXTENSIONS = new Set(['.mp4']);
 const ALLOWED_EXTENSIONS = new Set([...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS]);
+
+// ── Favorites helpers ────────────────────────────────────────────────────────
+
+function loadFavorites() {
+  try {
+    if (fs.existsSync(FAVORITES_FILE)) {
+      return new Set(JSON.parse(fs.readFileSync(FAVORITES_FILE, 'utf8')));
+    }
+  } catch { /* corrupt file — start fresh */ }
+  return new Set();
+}
+
+function saveFavorites(set) {
+  fs.writeFileSync(FAVORITES_FILE, JSON.stringify([...set]), 'utf8');
+}
 
 // Multer config for file uploads
 const uploadStorage = multer.diskStorage({
@@ -168,6 +184,7 @@ app.get('/thumbnails/:filename', (req, res) => {
 // API: list all images sorted by modified date (newest first)
 app.get('/api/images', (req, res) => {
   try {
+    const favorites = loadFavorites();
     const files = fs.readdirSync(IMAGES_DIR);
     const images = files
       .filter(file => {
@@ -184,6 +201,7 @@ app.get('/api/images', (req, res) => {
           type: VIDEO_EXTENSIONS.has(ext) ? 'video' : 'image',
           size: stat.size,
           modified: stat.mtimeMs,
+          favorite: favorites.has(file),
         };
       })
       .sort((a, b) => b.modified - a.modified);
@@ -193,6 +211,27 @@ app.get('/api/images', (req, res) => {
     console.error('Error reading images directory:', err);
     res.status(500).json({ error: 'Failed to read images' });
   }
+});
+
+// API: add a favorite
+app.post('/api/favorites/:filename', (req, res) => {
+  const filename = path.basename(decodeURIComponent(req.params.filename));
+  const ext = path.extname(filename).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.has(ext)) return res.status(400).json({ error: 'File type not allowed' });
+  if (!fs.existsSync(path.join(IMAGES_DIR, filename))) return res.status(404).json({ error: 'File not found' });
+  const favs = loadFavorites();
+  favs.add(filename);
+  saveFavorites(favs);
+  res.json({ favorite: true, name: filename });
+});
+
+// API: remove a favorite
+app.delete('/api/favorites/:filename', (req, res) => {
+  const filename = path.basename(decodeURIComponent(req.params.filename));
+  const favs = loadFavorites();
+  favs.delete(filename);
+  saveFavorites(favs);
+  res.json({ favorite: false, name: filename });
 });
 
 // API: delete an image by filename
@@ -219,6 +258,9 @@ app.delete('/api/images/:filename', (req, res) => {
     // Also remove thumbnail if it exists
     const thumbPath = path.join(THUMBS_DIR, `${filename}.jpg`);
     if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+    // Remove from favorites if present
+    const favs = loadFavorites();
+    if (favs.has(filename)) { favs.delete(filename); saveFavorites(favs); }
     res.json({ deleted: filename });
   } catch (err) {
     console.error('Error deleting file:', err);

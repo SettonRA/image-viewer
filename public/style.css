@@ -163,6 +163,41 @@ main {
   pointer-events: none;
 }
 
+/* Star / favorite button */
+.star-btn {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.45);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.star-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+  transform: scale(1.15);
+}
+
+.star-btn svg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.75);
+  transition: fill 0.15s, stroke 0.15s;
+}
+
+.star-btn.favorited svg {
+  fill: #f5c518;
+  stroke: #f5c518;
+}
+
 .gallery-item img,
 .gallery-item video {
   width: 100%;

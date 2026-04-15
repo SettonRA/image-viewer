@@ -152,7 +152,24 @@ confirmDelete.addEventListener('click', async () => {
   }
 });
 
-// Fetch images from API
+// ── Favorites ────────────────────────────────────────────────────────────────
+
+async function toggleFavorite(image, starEl) {
+  const adding = !image.favorite;
+  const method = adding ? 'POST' : 'DELETE';
+  try {
+    const res = await fetch(`/api/favorites/${encodeURIComponent(image.name)}`, { method });
+    if (!res.ok) throw new Error('Request failed');
+    image.favorite = adding;
+    starEl.classList.toggle('favorited', adding);
+    starEl.setAttribute('aria-pressed', String(adding));
+    starEl.setAttribute('aria-label', adding ? `Remove ${image.name} from favorites` : `Favorite ${image.name}`);
+    // Re-sort so the card floats to/from the top
+    renderGallery();
+  } catch {
+    showToast('Could not update favorite. Try again.', 'error');
+  }
+}
 async function loadImages() {
   try {
     const res = await fetch('/api/images');
@@ -167,12 +184,13 @@ async function loadImages() {
 function sortImages(images, order) {
   const sorted = [...images];
   switch (order) {
-    case 'newest':  return sorted.sort((a, b) => b.modified - a.modified);
-    case 'oldest':  return sorted.sort((a, b) => a.modified - b.modified);
-    case 'name-asc':  return sorted.sort((a, b) => a.name.localeCompare(b.name));
-    case 'name-desc': return sorted.sort((a, b) => b.name.localeCompare(a.name));
-    default: return sorted;
+    case 'newest':  sorted.sort((a, b) => b.modified - a.modified); break;
+    case 'oldest':  sorted.sort((a, b) => a.modified - b.modified); break;
+    case 'name-asc':  sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+    case 'name-desc': sorted.sort((a, b) => b.name.localeCompare(a.name)); break;
   }
+  // Favorites always float to the top
+  return sorted.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
 }
 
 function renderGallery() {
@@ -220,6 +238,15 @@ function renderGallery() {
     item.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') openLightbox(index);
     });
+
+    // Star / favorite button
+    const starBtn = document.createElement('button');
+    starBtn.className = 'star-btn' + (image.favorite ? ' favorited' : '');
+    starBtn.setAttribute('aria-label', image.favorite ? `Remove ${image.name} from favorites` : `Favorite ${image.name}`);
+    starBtn.setAttribute('aria-pressed', String(!!image.favorite));
+    starBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+    starBtn.addEventListener('click', e => { e.stopPropagation(); toggleFavorite(image, starBtn); });
+    item.appendChild(starBtn);
 
     const dlBtn = document.createElement('a');
     dlBtn.className = 'download-btn';
