@@ -220,21 +220,20 @@ function renderGallery() {
     let media;
     if (image.type === 'video') {
       media = document.createElement('img');
-      media.src = `/thumbnails/${encodeURIComponent(image.name)}.jpg`;
       media.alt = image.name;
       media.loading = 'lazy';
       media.decoding = 'async';
       item.classList.add('is-video');
-      // Retry thumbnail if ffmpeg hasn't finished generating it yet
-      let retries = 0;
-      media.addEventListener('error', function retry() {
-        if (retries >= 4) return;
-        retries++;
-        const delay = retries * 1500;
-        setTimeout(() => {
-          media.src = `/thumbnails/${encodeURIComponent(image.name)}.jpg?t=${Date.now()}`;
-        }, delay);
-      });
+      // Retry thumbnail up to 4 times if ffmpeg hasn't finished yet
+      (function setThumbSrc(attempts) {
+        media.src = `/thumbnails/${encodeURIComponent(image.name)}.jpg?t=${Date.now()}`;
+        if (attempts > 0) {
+          media.onerror = () => {
+            media.onerror = null;
+            setTimeout(() => setThumbSrc(attempts - 1), 1500);
+          };
+        }
+      })(4);
     } else {
       media = document.createElement('img');
       media.src = image.url;

@@ -115,10 +115,9 @@ app.get('/images/:filename', (req, res) => {
   });
 });
 
-// Serve thumbnails directory
-app.use('/thumbnails', express.static(THUMBS_DIR));
-
 // Generate and serve video thumbnails on demand
+const pendingThumbs = new Map();
+
 app.get('/thumbnails/:filename', (req, res) => {
   const baseName = path.basename(decodeURIComponent(req.params.filename));
   const thumbPath = path.join(THUMBS_DIR, baseName);
@@ -133,6 +132,14 @@ app.get('/thumbnails/:filename', (req, res) => {
 
   if (!fs.existsSync(videoPath)) return res.status(404).end();
 
+  // If ffmpeg is already running for this file, queue this response
+  if (pendingThumbs.has(baseName)) {
+    pendingThumbs.get(baseName).push(res);
+    return;
+  }
+
+  pendingThumbs.set(baseName, [res]);
+
   execFile('ffmpeg', [
     '-i', videoPath,
     '-ss', '00:00:01',
@@ -141,12 +148,18 @@ app.get('/thumbnails/:filename', (req, res) => {
     '-f', 'image2',
     thumbPath,
   ], (err) => {
+    const waiting = pendingThumbs.get(baseName) || [];
+    pendingThumbs.delete(baseName);
     if (err || !fs.existsSync(thumbPath)) {
-      return res.status(500).end();
+      waiting.forEach(r => r.status(503).end());
+      return;
     }
-    res.sendFile(thumbPath);
+    waiting.forEach(r => r.sendFile(thumbPath));
   });
 });
+
+// Serve remaining thumbnails (pre-existing files not matched above)
+app.use('/thumbnails', express.static(THUMBS_DIR));
 
 // API: list all images sorted by modified date (newest first)
 app.get('/api/images', (req, res) => {
