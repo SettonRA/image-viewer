@@ -225,6 +225,16 @@ function renderGallery() {
       media.loading = 'lazy';
       media.decoding = 'async';
       item.classList.add('is-video');
+      // Retry thumbnail if ffmpeg hasn't finished generating it yet
+      let retries = 0;
+      media.addEventListener('error', function retry() {
+        if (retries >= 4) return;
+        retries++;
+        const delay = retries * 1500;
+        setTimeout(() => {
+          media.src = `/thumbnails/${encodeURIComponent(image.name)}.jpg?t=${Date.now()}`;
+        }, delay);
+      });
     } else {
       media = document.createElement('img');
       media.src = image.url;

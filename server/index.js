@@ -148,39 +148,6 @@ app.get('/thumbnails/:filename', (req, res) => {
   });
 });
 
-// Serve thumbnails directory
-app.use('/thumbnails', express.static(THUMBS_DIR));
-
-// Generate and serve video thumbnails on demand
-app.get('/thumbnails/:filename', (req, res) => {
-  const baseName = path.basename(decodeURIComponent(req.params.filename));
-  const thumbPath = path.join(THUMBS_DIR, baseName);
-
-  if (fs.existsSync(thumbPath)) {
-    return res.sendFile(thumbPath);
-  }
-
-  // Strip .jpg suffix added by client to find the source video
-  const videoName = baseName.replace(/\.jpg$/, '');
-  const videoPath = path.join(IMAGES_DIR, videoName);
-
-  if (!fs.existsSync(videoPath)) return res.status(404).end();
-
-  execFile('ffmpeg', [
-    '-i', videoPath,
-    '-ss', '00:00:01',
-    '-vframes', '1',
-    '-vf', 'scale=600:-1',
-    '-f', 'image2',
-    thumbPath,
-  ], (err) => {
-    if (err || !fs.existsSync(thumbPath)) {
-      return res.status(500).end();
-    }
-    res.sendFile(thumbPath);
-  });
-});
-
 // API: list all images sorted by modified date (newest first)
 app.get('/api/images', (req, res) => {
   try {
