@@ -74,6 +74,50 @@ header h1 {
   cursor: pointer;
 }
 
+/* Slideshow button */
+.slideshow-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.slideshow-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.slideshow-btn.active {
+  color: var(--accent-hover);
+  border-color: var(--accent);
+  background: rgba(124, 92, 191, 0.15);
+}
+
+/* Slideshow progress bar along bottom of lightbox */
+.lightbox.slideshow-active::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--accent);
+  animation: slideshow-progress 60s linear;
+  z-index: 1002;
+}
+
+@keyframes slideshow-progress {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+
 /* Main gallery */
 main {
   padding: 20px;

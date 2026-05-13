@@ -20,6 +20,7 @@ const confirmModal = document.getElementById('confirm-modal');
 const confirmFilename = document.getElementById('confirm-filename');
 const confirmCancel = document.getElementById('confirm-cancel');
 const confirmDelete = document.getElementById('confirm-delete');
+const slideshowBtn = document.getElementById('slideshow-btn');
 
 const ALLOWED_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'mp4']);
 
@@ -284,6 +285,55 @@ function renderGallery() {
 
 const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
 
+// ── Slideshow ─────────────────────────────────────────────────────────────────
+
+const SLIDESHOW_INTERVAL = 60000; // 60 seconds
+let slideshowTimer = null;
+
+function startSlideshow() {
+  if (filteredImages.length === 0) return;
+  openLightbox(0);
+  lightbox.classList.add('slideshow-active');
+  slideshowBtn.setAttribute('aria-pressed', 'true');
+  slideshowBtn.classList.add('active');
+  scheduleNext();
+}
+
+function stopSlideshow() {
+  clearTimeout(slideshowTimer);
+  slideshowTimer = null;
+  lightbox.classList.remove('slideshow-active');
+  slideshowBtn.setAttribute('aria-pressed', 'false');
+  slideshowBtn.classList.remove('active');
+}
+
+function scheduleNext() {
+  clearTimeout(slideshowTimer);
+  // Restart progress bar animation
+  lightbox.classList.remove('slideshow-active');
+  void lightbox.offsetWidth; // force reflow
+  lightbox.classList.add('slideshow-active');
+  slideshowTimer = setTimeout(() => {
+    if (lightbox.classList.contains('hidden')) { stopSlideshow(); return; }
+    if (lightboxIndex < filteredImages.length - 1) {
+      lightboxIndex++;
+    } else {
+      lightboxIndex = 0; // loop
+    }
+    showLightboxImage();
+    scheduleNext();
+  }, SLIDESHOW_INTERVAL);
+}
+
+slideshowBtn.addEventListener('click', () => {
+  if (slideshowTimer !== null) {
+    stopSlideshow();
+    closeLightbox();
+  } else {
+    startSlideshow();
+  }
+});
+
 // Lightbox
 function openLightbox(index) {
   lightboxIndex = index;
@@ -297,6 +347,7 @@ function openLightbox(index) {
 }
 
 function closeLightbox() {
+  stopSlideshow();
   if (document.fullscreenElement || document.webkitFullscreenElement) {
     (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
   }
@@ -339,6 +390,7 @@ function nextImage() {
   if (lightboxIndex < filteredImages.length - 1) {
     lightboxIndex++;
     showLightboxImage();
+    if (slideshowTimer !== null) scheduleNext(); // reset timer on manual nav
   }
 }
 
