@@ -9,6 +9,8 @@ const PORT = process.env.PORT || 3000;
 const IMAGES_DIR = path.join(__dirname, '..', 'images');
 const THUMBS_DIR = path.join(__dirname, '..', 'thumbnails');
 const FAVORITES_FILE = path.join(IMAGES_DIR, '.favorites.json');
+const TAGS_FILE = path.join(IMAGES_DIR, '.tags.json');
+const MAX_TAG_LENGTH = 40;
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.avif']);
 const VIDEO_EXTENSIONS = new Set(['.mp4']);
@@ -27,6 +29,33 @@ function loadFavorites() {
 
 function saveFavorites(set) {
   fs.writeFileSync(FAVORITES_FILE, JSON.stringify([...set]), 'utf8');
+}
+
+// ── Tags helpers ─────────────────────────────────────────────────────────────
+
+function loadTags() {
+  try {
+    if (fs.existsSync(TAGS_FILE)) {
+      return JSON.parse(fs.readFileSync(TAGS_FILE, 'utf8'));
+    }
+  } catch { /* corrupt file — start fresh */ }
+  return {};
+}
+
+function saveTags(map) {
+  fs.writeFileSync(TAGS_FILE, JSON.stringify(map), 'utf8');
+}
+
+function normalizeTag(raw) {
+  return String(raw || '').trim().slice(0, MAX_TAG_LENGTH);
+}
+
+// 'image'/'video' are automatic, derived from file type — not stored, not removable.
+const AUTO_TAGS = new Set(['image', 'video']);
+
+function tagsForFile(tagsMap, file, type) {
+  const userTags = (tagsMap[file] || []).filter(t => !AUTO_TAGS.has(t.toLowerCase()));
+  return [type, ...userTags];
 }
 
 // Multer config for file uploads
@@ -62,6 +91,8 @@ const upload = multer({
 // Ensure directories exist
 if (!fs.existsSync(IMAGES_DIR)) fs.mkdirSync(IMAGES_DIR, { recursive: true });
 if (!fs.existsSync(THUMBS_DIR)) fs.mkdirSync(THUMBS_DIR, { recursive: true });
+
+app.use(express.json());
 
 // Serve static frontend files
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -165,6 +196,7 @@ app.use('/thumbnails', express.static(THUMBS_DIR));
 app.get('/api/images', (req, res) => {
   try {
     const favorites = loadFavorites();
+    const tagsMap = loadTags();
     const files = fs.readdirSync(IMAGES_DIR);
     const images = files
       .filter(file => {
@@ -175,13 +207,15 @@ app.get('/api/images', (req, res) => {
         const ext = path.extname(file).toLowerCase();
         const filePath = path.join(IMAGES_DIR, file);
         const stat = fs.statSync(filePath);
+        const type = VIDEO_EXTENSIONS.has(ext) ? 'video' : 'image';
         return {
           name: file,
           url: `/images/${encodeURIComponent(file)}`,
-          type: VIDEO_EXTENSIONS.has(ext) ? 'video' : 'image',
+          type,
           size: stat.size,
           modified: stat.mtimeMs,
           favorite: favorites.has(file),
+          tags: tagsForFile(tagsMap, file, type),
         };
       })
       .sort((a, b) => b.modified - a.modified);
@@ -214,6 +248,48 @@ app.delete('/api/favorites/:filename', (req, res) => {
   res.json({ favorite: false, name: filename });
 });
 
+// API: add a tag to an image
+app.post('/api/tags/:filename', (req, res) => {
+  const filename = path.basename(decodeURIComponent(req.params.filename));
+  const ext = path.extname(filename).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.has(ext)) return res.status(400).json({ error: 'File type not allowed' });
+  if (!fs.existsSync(path.join(IMAGES_DIR, filename))) return res.status(404).json({ error: 'File not found' });
+
+  const tag = normalizeTag(req.body && req.body.tag);
+  if (!tag) return res.status(400).json({ error: 'Tag is required' });
+  if (AUTO_TAGS.has(tag.toLowerCase())) return res.status(400).json({ error: `"${tag}" is an automatic tag and can't be added manually` });
+
+  const tagsMap = loadTags();
+  const existing = tagsMap[filename] || [];
+  if (!existing.some(t => t.toLowerCase() === tag.toLowerCase())) {
+    tagsMap[filename] = [...existing, tag];
+    saveTags(tagsMap);
+  }
+
+  const type = VIDEO_EXTENSIONS.has(ext) ? 'video' : 'image';
+  res.json({ name: filename, tags: tagsForFile(tagsMap, filename, type) });
+});
+
+// API: remove a tag from an image
+app.delete('/api/tags/:filename/:tag', (req, res) => {
+  const filename = path.basename(decodeURIComponent(req.params.filename));
+  const ext = path.extname(filename).toLowerCase();
+  const tag = decodeURIComponent(req.params.tag).toLowerCase();
+
+  const tagsMap = loadTags();
+  const existing = tagsMap[filename] || [];
+  const remaining = existing.filter(t => t.toLowerCase() !== tag);
+  if (remaining.length > 0) {
+    tagsMap[filename] = remaining;
+  } else {
+    delete tagsMap[filename];
+  }
+  saveTags(tagsMap);
+
+  const type = VIDEO_EXTENSIONS.has(ext) ? 'video' : 'image';
+  res.json({ name: filename, tags: tagsForFile(tagsMap, filename, type) });
+});
+
 // API: delete an image by filename
 app.delete('/api/images/:filename', (req, res) => {
   const filename = path.basename(decodeURIComponent(req.params.filename));
@@ -241,6 +317,9 @@ app.delete('/api/images/:filename', (req, res) => {
     // Remove from favorites if present
     const favs = loadFavorites();
     if (favs.has(filename)) { favs.delete(filename); saveFavorites(favs); }
+    // Remove from tags if present
+    const tagsMap = loadTags();
+    if (tagsMap[filename]) { delete tagsMap[filename]; saveTags(tagsMap); }
     res.json({ deleted: filename });
   } catch (err) {
     console.error('Error deleting file:', err);

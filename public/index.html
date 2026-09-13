@@ -33,6 +33,12 @@
     </div>
   </header>
 
+  <div id="tag-filter-bar" class="tag-filter-bar hidden">
+    <span class="tag-filter-label">Filter by tag:</span>
+    <div id="tag-filter-chips" class="tag-filter-chips"></div>
+    <button id="tag-filter-clear" class="tag-filter-clear hidden">Clear</button>
+  </div>
+
   <main>
     <div id="gallery" class="gallery"></div>
     <div id="empty-state" class="empty-state hidden">
@@ -73,6 +79,7 @@
       <img id="lightbox-img" src="" alt="" />
       <video id="lightbox-video" controls playsinline autoplay loop></video>
     </div>
+    <div id="lightbox-tags" class="lightbox-tags"></div>
   </div>
 
   <script src="app.js"></script>

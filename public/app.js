@@ -21,6 +21,12 @@ const confirmFilename = document.getElementById('confirm-filename');
 const confirmCancel = document.getElementById('confirm-cancel');
 const confirmDelete = document.getElementById('confirm-delete');
 const slideshowBtn = document.getElementById('slideshow-btn');
+const tagFilterBar = document.getElementById('tag-filter-bar');
+const tagFilterChips = document.getElementById('tag-filter-chips');
+const tagFilterClear = document.getElementById('tag-filter-clear');
+const lightboxTags = document.getElementById('lightbox-tags');
+
+let selectedTags = new Set();
 
 const ALLOWED_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'mp4']);
 
@@ -176,6 +182,7 @@ async function loadImages() {
     const res = await fetch('/api/images');
     if (!res.ok) throw new Error('Failed to fetch');
     allImages = await res.json();
+    renderTagFilterBar();
     renderGallery();
   } catch (err) {
     console.error('Error loading images:', err);
@@ -194,19 +201,167 @@ function sortImages(images, order) {
   return sorted.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
 }
 
+function filterByTags(images) {
+  if (selectedTags.size === 0) return images;
+  return images.filter(img => [...selectedTags].every(t => img.tags.includes(t)));
+}
+
+// ── Tags ─────────────────────────────────────────────────────────────────────
+
+async function addTag(image, tag) {
+  try {
+    const res = await fetch(`/api/tags/${encodeURIComponent(image.name)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tag }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to add tag');
+    image.tags = data.tags;
+  } catch (err) {
+    showToast(err.message || 'Could not add tag.', 'error');
+  }
+}
+
+async function removeTag(image, tag) {
+  try {
+    const res = await fetch(`/api/tags/${encodeURIComponent(image.name)}/${encodeURIComponent(tag)}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to remove tag');
+    const data = await res.json();
+    image.tags = data.tags;
+  } catch {
+    showToast('Could not remove tag.', 'error');
+  }
+}
+
+// Builds a chip row for one image's tags, with add/remove controls.
+// `onChange` is called after any tag mutation so callers can re-render whatever else depends on it.
+function buildTagsElement(image, onChange) {
+  const container = document.createElement('div');
+  container.className = 'tag-row';
+
+  function refresh() {
+    container.innerHTML = '';
+
+    image.tags.forEach(tag => {
+      const isAuto = tag === image.type;
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip' + (isAuto ? ' tag-chip-auto' : '');
+      chip.textContent = tag;
+
+      if (!isAuto) {
+        const rm = document.createElement('button');
+        rm.className = 'tag-remove';
+        rm.type = 'button';
+        rm.textContent = '×';
+        rm.setAttribute('aria-label', `Remove tag "${tag}" from ${image.name}`);
+        rm.addEventListener('click', async e => {
+          e.stopPropagation();
+          await removeTag(image, tag);
+          refresh();
+          onChange();
+        });
+        chip.appendChild(rm);
+      }
+      container.appendChild(chip);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.className = 'tag-add-btn';
+    addBtn.type = 'button';
+    addBtn.textContent = '+ tag';
+    addBtn.setAttribute('aria-label', `Add tag to ${image.name}`);
+    addBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const input = document.createElement('input');
+      input.className = 'tag-input';
+      input.type = 'text';
+      input.placeholder = 'tag name';
+      input.maxLength = 40;
+      container.replaceChild(input, addBtn);
+      input.focus();
+
+      let committed = false;
+      const commit = async () => {
+        if (committed) return;
+        committed = true;
+        const val = input.value.trim();
+        if (val) await addTag(image, val);
+        refresh();
+        onChange();
+      };
+      input.addEventListener('click', e2 => e2.stopPropagation());
+      input.addEventListener('keydown', ev => {
+        ev.stopPropagation();
+        if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+        if (ev.key === 'Escape') { committed = true; refresh(); }
+      });
+      input.addEventListener('blur', commit);
+    });
+    container.appendChild(addBtn);
+  }
+
+  refresh();
+  return container;
+}
+
+function renderTagFilterBar() {
+  const allTags = new Set();
+  allImages.forEach(img => img.tags.forEach(t => allTags.add(t)));
+  [...selectedTags].forEach(t => { if (!allTags.has(t)) selectedTags.delete(t); });
+
+  if (allTags.size === 0) {
+    tagFilterBar.classList.add('hidden');
+    return;
+  }
+  tagFilterBar.classList.remove('hidden');
+
+  const sorted = [...allTags].sort((a, b) => a.localeCompare(b));
+  tagFilterChips.innerHTML = '';
+  sorted.forEach(tag => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'tag-filter-chip' + (selectedTags.has(tag) ? ' selected' : '');
+    chip.textContent = tag;
+    chip.setAttribute('aria-pressed', String(selectedTags.has(tag)));
+    chip.addEventListener('click', () => {
+      if (selectedTags.has(tag)) selectedTags.delete(tag);
+      else selectedTags.add(tag);
+      renderTagFilterBar();
+      renderGallery();
+    });
+    tagFilterChips.appendChild(chip);
+  });
+
+  tagFilterClear.classList.toggle('hidden', selectedTags.size === 0);
+}
+
+tagFilterClear.addEventListener('click', () => {
+  selectedTags.clear();
+  renderTagFilterBar();
+  renderGallery();
+});
+
+function onTagsChanged() {
+  renderTagFilterBar();
+  renderGallery();
+}
+
 function renderGallery() {
-  filteredImages = sortImages(allImages, sortSelect.value);
+  filteredImages = sortImages(filterByTags(allImages), sortSelect.value);
 
   gallery.innerHTML = '';
 
   if (filteredImages.length === 0) {
     emptyState.classList.remove('hidden');
-    imageCount.textContent = '';
+    imageCount.textContent = selectedTags.size > 0 ? '0 images match the selected tags' : '';
     return;
   }
 
   emptyState.classList.add('hidden');
-  imageCount.textContent = `${filteredImages.length} image${filteredImages.length !== 1 ? 's' : ''}`;
+  imageCount.textContent = selectedTags.size > 0
+    ? `${filteredImages.length} of ${allImages.length} images`
+    : `${filteredImages.length} image${filteredImages.length !== 1 ? 's' : ''}`;
 
   filteredImages.forEach((image, index) => {
     const card = document.createElement('div');
@@ -278,6 +433,7 @@ function renderGallery() {
     cardActions.appendChild(delBtn);
 
     card.appendChild(item);
+    card.appendChild(buildTagsElement(image, onTagsChanged));
     card.appendChild(cardActions);
     gallery.appendChild(card);
   });
@@ -377,6 +533,9 @@ function showLightboxImage() {
 
   lightboxPrev.classList.toggle('nav-hidden', lightboxIndex === 0);
   lightboxNext.classList.toggle('nav-hidden', lightboxIndex === filteredImages.length - 1);
+
+  lightboxTags.innerHTML = '';
+  lightboxTags.appendChild(buildTagsElement(image, onTagsChanged));
 }
 
 function prevImage() {

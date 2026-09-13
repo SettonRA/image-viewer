@@ -118,6 +118,161 @@ header h1 {
   to   { width: 100%; }
 }
 
+/* Tag filter bar */
+.tag-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.tag-filter-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.tag-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-filter-chip {
+  font-family: inherit;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.tag-filter-chip:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.tag-filter-chip.selected {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tag-filter-clear {
+  font-family: inherit;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.tag-filter-clear:hover {
+  color: var(--text);
+}
+
+/* Per-image tag row (gallery card + lightbox) */
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2px 8px;
+  line-height: 1.5;
+}
+
+.tag-chip-auto {
+  color: var(--accent-hover);
+  border-color: var(--accent);
+}
+
+.tag-remove {
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.tag-remove:hover {
+  color: #e07070;
+}
+
+.tag-add-btn {
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tag-add-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.tag-input {
+  font-family: inherit;
+  font-size: 0.72rem;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 2px 8px;
+  width: 100px;
+}
+
+.tag-input:focus {
+  outline: none;
+}
+
+.lightbox-tags {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1002;
+  display: flex;
+  justify-content: center;
+  max-width: 90vw;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.lightbox-tags .tag-row {
+  border-top: none;
+  background: transparent;
+  padding: 4px 6px;
+}
+
 /* Main gallery */
 main {
   padding: 20px;
