@@ -25,7 +25,6 @@ const tagFilterBar = document.getElementById('tag-filter-bar');
 const tagFilterChips = document.getElementById('tag-filter-chips');
 const tagFilterClear = document.getElementById('tag-filter-clear');
 const lightboxTags = document.getElementById('lightbox-tags');
-const tagSuggestions = document.getElementById('tag-suggestions');
 
 let selectedTags = new Set();
 
@@ -274,32 +273,66 @@ function buildTagsElement(image, onChange) {
     addBtn.setAttribute('aria-label', `Add tag to ${image.name}`);
     addBtn.addEventListener('click', e => {
       e.stopPropagation();
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'tag-input-wrapper';
+
       const input = document.createElement('input');
       input.className = 'tag-input';
       input.type = 'text';
       input.placeholder = 'tag name';
       input.maxLength = 40;
-      input.setAttribute('list', 'tag-suggestions');
       input.setAttribute('autocomplete', 'off');
-      container.replaceChild(input, addBtn);
+
+      const dropdown = document.createElement('div');
+      dropdown.className = 'tag-dropdown hidden';
+
+      wrapper.appendChild(input);
+      wrapper.appendChild(dropdown);
+      container.replaceChild(wrapper, addBtn);
       input.focus();
 
       let committed = false;
-      const commit = async () => {
+      const commit = async (value) => {
         if (committed) return;
         committed = true;
-        const val = input.value.trim();
+        const val = (value !== undefined ? value : input.value).trim();
         if (val) await addTag(image, val);
         refresh();
         onChange();
       };
+
+      function renderDropdown() {
+        const query = input.value.trim().toLowerCase();
+        const already = new Set(image.tags.map(t => t.toLowerCase()));
+        const options = knownTags.filter(t => !already.has(t.toLowerCase()) && (!query || t.toLowerCase().includes(query)));
+        dropdown.innerHTML = '';
+        dropdown.classList.toggle('hidden', options.length === 0);
+        options.forEach(tag => {
+          const opt = document.createElement('button');
+          opt.type = 'button';
+          opt.className = 'tag-dropdown-item';
+          opt.textContent = tag;
+          // mousedown (not click) so this fires before the input's blur handler
+          opt.addEventListener('mousedown', ev => {
+            ev.preventDefault();
+            commit(tag);
+          });
+          dropdown.appendChild(opt);
+        });
+      }
+
       input.addEventListener('click', e2 => e2.stopPropagation());
+      input.addEventListener('input', renderDropdown);
+      input.addEventListener('focus', renderDropdown);
       input.addEventListener('keydown', ev => {
         ev.stopPropagation();
         if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
         if (ev.key === 'Escape') { committed = true; refresh(); }
       });
-      input.addEventListener('blur', commit);
+      input.addEventListener('blur', () => commit());
+
+      renderDropdown();
     });
     container.appendChild(addBtn);
   }
@@ -308,20 +341,17 @@ function buildTagsElement(image, onChange) {
   return container;
 }
 
-function updateTagSuggestions() {
+// All known user tags (excludes the automatic 'image'/'video' tags), for the add-tag dropdown.
+let knownTags = [];
+
+function updateKnownTags() {
   const userTags = new Set();
   allImages.forEach(img => img.tags.forEach(t => { if (t !== 'image' && t !== 'video') userTags.add(t); }));
-  const sorted = [...userTags].sort((a, b) => a.localeCompare(b));
-  tagSuggestions.innerHTML = '';
-  sorted.forEach(tag => {
-    const option = document.createElement('option');
-    option.value = tag;
-    tagSuggestions.appendChild(option);
-  });
+  knownTags = [...userTags].sort((a, b) => a.localeCompare(b));
 }
 
 function renderTagFilterBar() {
-  updateTagSuggestions();
+  updateKnownTags();
 
   const allTags = new Set();
   allImages.forEach(img => img.tags.forEach(t => allTags.add(t)));
