@@ -73,14 +73,16 @@
   <!-- Lightbox -->
   <div id="lightbox" class="lightbox hidden">
     <button id="lightbox-close" class="lightbox-close" aria-label="Close">&times;</button>
+    <div id="lightbox-tags" class="lightbox-tags"></div>
     <div id="lightbox-prev" class="lightbox-zone lightbox-prev" role="button" aria-label="Previous"></div>
     <div id="lightbox-next" class="lightbox-zone lightbox-next" role="button" aria-label="Next"></div>
     <div class="lightbox-content">
       <img id="lightbox-img" src="" alt="" />
       <video id="lightbox-video" controls playsinline autoplay loop></video>
     </div>
-    <div id="lightbox-tags" class="lightbox-tags"></div>
   </div>
+
+  <datalist id="tag-suggestions"></datalist>
 
   <script src="app.js"></script>
 </body>

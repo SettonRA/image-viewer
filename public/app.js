@@ -25,6 +25,7 @@ const tagFilterBar = document.getElementById('tag-filter-bar');
 const tagFilterChips = document.getElementById('tag-filter-chips');
 const tagFilterClear = document.getElementById('tag-filter-clear');
 const lightboxTags = document.getElementById('lightbox-tags');
+const tagSuggestions = document.getElementById('tag-suggestions');
 
 let selectedTags = new Set();
 
@@ -278,6 +279,8 @@ function buildTagsElement(image, onChange) {
       input.type = 'text';
       input.placeholder = 'tag name';
       input.maxLength = 40;
+      input.setAttribute('list', 'tag-suggestions');
+      input.setAttribute('autocomplete', 'off');
       container.replaceChild(input, addBtn);
       input.focus();
 
@@ -305,7 +308,21 @@ function buildTagsElement(image, onChange) {
   return container;
 }
 
+function updateTagSuggestions() {
+  const userTags = new Set();
+  allImages.forEach(img => img.tags.forEach(t => { if (t !== 'image' && t !== 'video') userTags.add(t); }));
+  const sorted = [...userTags].sort((a, b) => a.localeCompare(b));
+  tagSuggestions.innerHTML = '';
+  sorted.forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    tagSuggestions.appendChild(option);
+  });
+}
+
 function renderTagFilterBar() {
+  updateTagSuggestions();
+
   const allTags = new Set();
   allImages.forEach(img => img.tags.forEach(t => allTags.add(t)));
   [...selectedTags].forEach(t => { if (!allTags.has(t)) selectedTags.delete(t); });
@@ -433,7 +450,6 @@ function renderGallery() {
     cardActions.appendChild(delBtn);
 
     card.appendChild(item);
-    card.appendChild(buildTagsElement(image, onTagsChanged));
     card.appendChild(cardActions);
     gallery.appendChild(card);
   });
@@ -504,6 +520,7 @@ function openLightbox(index) {
 
 function closeLightbox() {
   stopSlideshow();
+  clearTimeout(lightboxIdleTimer);
   if (document.fullscreenElement || document.webkitFullscreenElement) {
     (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
   }
@@ -513,6 +530,32 @@ function closeLightbox() {
   lightboxVideo.pause();
   lightboxVideo.src = '';
 }
+
+// ── Lightbox tag bar idle-fade (mirrors native video-control fade behavior) ───
+
+const LIGHTBOX_IDLE_DELAY = 3000;
+let lightboxIdleTimer = null;
+
+function wakeLightboxTags() {
+  lightboxTags.classList.remove('faded');
+  scheduleLightboxIdle();
+}
+
+function scheduleLightboxIdle() {
+  clearTimeout(lightboxIdleTimer);
+  lightboxIdleTimer = setTimeout(() => {
+    // Don't fade out while the user is actively editing a tag
+    if (lightboxTags.contains(document.activeElement)) return;
+    lightboxTags.classList.add('faded');
+  }, LIGHTBOX_IDLE_DELAY);
+}
+
+lightbox.addEventListener('mousemove', wakeLightboxTags);
+lightbox.addEventListener('touchstart', wakeLightboxTags, { passive: true });
+lightboxTags.addEventListener('mouseenter', () => { clearTimeout(lightboxIdleTimer); lightboxTags.classList.remove('faded'); });
+lightboxTags.addEventListener('mouseleave', scheduleLightboxIdle);
+lightboxTags.addEventListener('focusin', () => { clearTimeout(lightboxIdleTimer); lightboxTags.classList.remove('faded'); });
+lightboxTags.addEventListener('focusout', scheduleLightboxIdle);
 
 function showLightboxImage() {
   const image = filteredImages[lightboxIndex];
@@ -536,6 +579,7 @@ function showLightboxImage() {
 
   lightboxTags.innerHTML = '';
   lightboxTags.appendChild(buildTagsElement(image, onTagsChanged));
+  wakeLightboxTags();
 }
 
 function prevImage() {
