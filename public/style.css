@@ -179,21 +179,27 @@ header h1 {
   cursor: pointer;
 }
 
+.tag-filter-divider {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}
+
 .tag-filter-clear-btn {
-  margin-top: 4px;
-  padding: 6px 8px;
+  padding: 5px 12px;
   font-family: inherit;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
-  background: none;
-  border: none;
-  border-top: 1px solid var(--border);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
   cursor: pointer;
-  text-align: left;
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .tag-filter-clear-btn:hover {
   color: var(--text);
+  border-color: var(--accent);
 }
 
 /* Per-image tag row (lightbox only) */
