@@ -11,14 +11,12 @@
     <h1>Image Viewer</h1>
     <div class="toolbar">
       <span id="image-count"></span>
-      <div class="sort-controls">
-        <label for="sort-select">Sort:</label>
-        <select id="sort-select">
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="name-asc">Name A–Z</option>
-          <option value="name-desc">Name Z–A</option>
-        </select>
+      <div class="tag-filter-dropdown hidden" id="tag-filter-dropdown">
+        <button id="tag-filter-btn" class="tag-filter-btn" type="button" aria-haspopup="true" aria-expanded="false">
+          Filter
+          <span id="tag-filter-count" class="tag-filter-count hidden"></span>
+        </button>
+        <div id="tag-filter-panel" class="tag-filter-panel hidden"></div>
       </div>
       <button id="slideshow-btn" class="slideshow-btn" title="Start slideshow" aria-label="Start slideshow" aria-pressed="false">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -32,12 +30,6 @@
       </div>
     </div>
   </header>
-
-  <div id="tag-filter-bar" class="tag-filter-bar hidden">
-    <span class="tag-filter-label">Filter by tag:</span>
-    <div id="tag-filter-chips" class="tag-filter-chips"></div>
-    <button id="tag-filter-clear" class="tag-filter-clear hidden">Clear</button>
-  </div>
 
   <main>
     <div id="gallery" class="gallery"></div>

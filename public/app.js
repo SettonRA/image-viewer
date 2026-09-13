@@ -5,7 +5,6 @@ let lightboxIndex = 0;
 const gallery = document.getElementById('gallery');
 const emptyState = document.getElementById('empty-state');
 const imageCount = document.getElementById('image-count');
-const sortSelect = document.getElementById('sort-select');
 const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightbox-img');
 const lightboxVideo = document.getElementById('lightbox-video');
@@ -21,9 +20,10 @@ const confirmFilename = document.getElementById('confirm-filename');
 const confirmCancel = document.getElementById('confirm-cancel');
 const confirmDelete = document.getElementById('confirm-delete');
 const slideshowBtn = document.getElementById('slideshow-btn');
-const tagFilterBar = document.getElementById('tag-filter-bar');
-const tagFilterChips = document.getElementById('tag-filter-chips');
-const tagFilterClear = document.getElementById('tag-filter-clear');
+const tagFilterDropdown = document.getElementById('tag-filter-dropdown');
+const tagFilterBtn = document.getElementById('tag-filter-btn');
+const tagFilterCount = document.getElementById('tag-filter-count');
+const tagFilterPanel = document.getElementById('tag-filter-panel');
 const lightboxTags = document.getElementById('lightbox-tags');
 
 let selectedTags = new Set();
@@ -182,21 +182,15 @@ async function loadImages() {
     const res = await fetch('/api/images');
     if (!res.ok) throw new Error('Failed to fetch');
     allImages = await res.json();
-    renderTagFilterBar();
+    renderTagFilterPanel();
     renderGallery();
   } catch (err) {
     console.error('Error loading images:', err);
   }
 }
 
-function sortImages(images, order) {
-  const sorted = [...images];
-  switch (order) {
-    case 'newest':  sorted.sort((a, b) => b.modified - a.modified); break;
-    case 'oldest':  sorted.sort((a, b) => a.modified - b.modified); break;
-    case 'name-asc':  sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
-    case 'name-desc': sorted.sort((a, b) => b.name.localeCompare(a.name)); break;
-  }
+function sortImages(images) {
+  const sorted = [...images].sort((a, b) => b.modified - a.modified);
   // Favorites always float to the top
   return sorted.sort((a, b) => (b.favorite ? 1 : 0) - (a.favorite ? 1 : 0));
 }
@@ -350,52 +344,100 @@ function updateKnownTags() {
   knownTags = [...userTags].sort((a, b) => a.localeCompare(b));
 }
 
-function renderTagFilterBar() {
+// 'image'/'video' first (most useful quick filters), then the rest alphabetically.
+function sortTagsForFilter(tags) {
+  const priority = t => (t === 'image' ? 0 : t === 'video' ? 1 : 2);
+  return [...tags].sort((a, b) => {
+    const diff = priority(a) - priority(b);
+    return diff !== 0 ? diff : a.localeCompare(b);
+  });
+}
+
+function updateTagFilterCount() {
+  tagFilterCount.textContent = selectedTags.size > 0 ? String(selectedTags.size) : '';
+  tagFilterCount.classList.toggle('hidden', selectedTags.size === 0);
+  tagFilterBtn.classList.toggle('active', selectedTags.size > 0);
+}
+
+function closeTagFilterPanel() {
+  tagFilterPanel.classList.add('hidden');
+  tagFilterBtn.setAttribute('aria-expanded', 'false');
+}
+
+function renderTagFilterPanel() {
   updateKnownTags();
 
   const allTags = new Set();
   allImages.forEach(img => img.tags.forEach(t => allTags.add(t)));
   [...selectedTags].forEach(t => { if (!allTags.has(t)) selectedTags.delete(t); });
 
+  tagFilterDropdown.classList.toggle('hidden', allTags.size === 0);
   if (allTags.size === 0) {
-    tagFilterBar.classList.add('hidden');
+    closeTagFilterPanel();
     return;
   }
-  tagFilterBar.classList.remove('hidden');
 
-  const sorted = [...allTags].sort((a, b) => a.localeCompare(b));
-  tagFilterChips.innerHTML = '';
+  const sorted = sortTagsForFilter(allTags);
+  tagFilterPanel.innerHTML = '';
   sorted.forEach(tag => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'tag-filter-chip' + (selectedTags.has(tag) ? ' selected' : '');
-    chip.textContent = tag;
-    chip.setAttribute('aria-pressed', String(selectedTags.has(tag)));
-    chip.addEventListener('click', () => {
-      if (selectedTags.has(tag)) selectedTags.delete(tag);
-      else selectedTags.add(tag);
-      renderTagFilterBar();
+    const option = document.createElement('label');
+    option.className = 'tag-filter-option';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = selectedTags.has(tag);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) selectedTags.add(tag);
+      else selectedTags.delete(tag);
+      updateTagFilterCount();
       renderGallery();
     });
-    tagFilterChips.appendChild(chip);
+    option.appendChild(checkbox);
+    option.appendChild(document.createTextNode(tag));
+    tagFilterPanel.appendChild(option);
   });
 
-  tagFilterClear.classList.toggle('hidden', selectedTags.size === 0);
+  if (selectedTags.size > 0) {
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'tag-filter-clear-btn';
+    clearBtn.textContent = 'Clear all';
+    clearBtn.addEventListener('click', () => {
+      selectedTags.clear();
+      renderTagFilterPanel();
+      renderGallery();
+    });
+    tagFilterPanel.appendChild(clearBtn);
+  }
+
+  updateTagFilterCount();
 }
 
-tagFilterClear.addEventListener('click', () => {
-  selectedTags.clear();
-  renderTagFilterBar();
-  renderGallery();
+tagFilterBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  const isOpen = !tagFilterPanel.classList.contains('hidden');
+  if (isOpen) {
+    closeTagFilterPanel();
+  } else {
+    tagFilterPanel.classList.remove('hidden');
+    tagFilterBtn.setAttribute('aria-expanded', 'true');
+  }
+});
+
+document.addEventListener('click', e => {
+  if (!tagFilterDropdown.contains(e.target)) closeTagFilterPanel();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !tagFilterPanel.classList.contains('hidden')) closeTagFilterPanel();
 });
 
 function onTagsChanged() {
-  renderTagFilterBar();
+  renderTagFilterPanel();
   renderGallery();
 }
 
 function renderGallery() {
-  filteredImages = sortImages(filterByTags(allImages), sortSelect.value);
+  filteredImages = sortImages(filterByTags(allImages));
 
   gallery.innerHTML = '';
 
@@ -668,7 +710,6 @@ lightbox.addEventListener('touchend', e => {
 }, { passive: true });
 
 // Event listeners
-sortSelect.addEventListener('change', renderGallery);
 lightboxClose.addEventListener('click', closeLightbox);
 lightboxPrev.addEventListener('click', prevImage);
 lightboxNext.addEventListener('click', nextImage);
