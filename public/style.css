@@ -184,22 +184,46 @@ header h1 {
   cursor: pointer;
 }
 
-.tag-filter-icon {
-  display: inline-flex;
+.tag-filter-row {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  line-height: 1;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
-.tag-filter-cycle.tag-filter-include {
+.tag-filter-row:hover {
+  background: var(--bg);
+}
+
+.tag-filter-tagname {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tag-filter-check input {
+  cursor: pointer;
+}
+
+.tag-filter-check-include {
   color: var(--accent-hover);
 }
 
-.tag-filter-cycle.tag-filter-exclude {
+.tag-filter-check-exclude {
   color: #e07070;
 }
 

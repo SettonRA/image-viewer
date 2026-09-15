@@ -393,36 +393,59 @@ function appendFilterOption(container, label, checked, onChange) {
   container.appendChild(option);
 }
 
-// Appends a tag option that cycles none -> include -> exclude -> none on each click.
+// Appends a tag row with separate Include/Exclude checkboxes (mutually exclusive with each other).
 // Only custom tags get this; Favorites/Untagged/Image/Video are plain on-off checkboxes.
-function appendTagCycleOption(container, tag) {
+// Two real checkboxes (rather than one element cycling through states on click) so each toggle
+// is a 'change' event, not a 'click' — the document-level "close on outside click" listener only
+// listens for 'click', so a checkbox toggle can rebuild the panel's DOM without that listener
+// mistaking the (now-detached) click target for a click outside the dropdown.
+function appendTagCheckboxRow(container, tag) {
   const state = tagFilterState.get(tag); // 'include' | 'exclude' | undefined
 
-  const option = document.createElement('button');
-  option.type = 'button';
-  option.className = 'tag-filter-option tag-filter-cycle';
-  option.classList.toggle('tag-filter-include', state === 'include');
-  option.classList.toggle('tag-filter-exclude', state === 'exclude');
+  const row = document.createElement('div');
+  row.className = 'tag-filter-row';
 
-  const icon = document.createElement('span');
-  icon.className = 'tag-filter-icon';
-  icon.textContent = state === 'include' ? '✓' : state === 'exclude' ? '✕' : '';
+  const name = document.createElement('span');
+  name.className = 'tag-filter-tagname';
+  name.textContent = tag;
+  row.appendChild(name);
 
-  option.appendChild(icon);
-  option.appendChild(document.createTextNode(tag));
-  option.addEventListener('click', () => {
-    if (state === 'include') {
-      tagFilterState.set(tag, 'exclude');
-    } else if (state === 'exclude') {
-      tagFilterState.delete(tag);
+  function setState(next) {
+    if (next) {
+      tagFilterState.set(tag, next);
+      untaggedSelected = false; // mutually exclusive with any custom-tag filter
     } else {
-      tagFilterState.set(tag, 'include');
+      tagFilterState.delete(tag);
     }
-    untaggedSelected = false; // mutually exclusive with any custom-tag filter
     renderTagFilterPanel();
     renderGallery();
-  });
-  container.appendChild(option);
+  }
+
+  const includeLabel = document.createElement('label');
+  includeLabel.className = 'tag-filter-check tag-filter-check-include';
+  includeLabel.title = `Include "${tag}"`;
+  const includeCheckbox = document.createElement('input');
+  includeCheckbox.type = 'checkbox';
+  includeCheckbox.checked = state === 'include';
+  includeCheckbox.setAttribute('aria-label', `Include tag "${tag}"`);
+  includeCheckbox.addEventListener('change', () => setState(includeCheckbox.checked ? 'include' : null));
+  includeLabel.appendChild(includeCheckbox);
+  includeLabel.appendChild(document.createTextNode('✓'));
+  row.appendChild(includeLabel);
+
+  const excludeLabel = document.createElement('label');
+  excludeLabel.className = 'tag-filter-check tag-filter-check-exclude';
+  excludeLabel.title = `Exclude "${tag}"`;
+  const excludeCheckbox = document.createElement('input');
+  excludeCheckbox.type = 'checkbox';
+  excludeCheckbox.checked = state === 'exclude';
+  excludeCheckbox.setAttribute('aria-label', `Exclude tag "${tag}"`);
+  excludeCheckbox.addEventListener('change', () => setState(excludeCheckbox.checked ? 'exclude' : null));
+  excludeLabel.appendChild(excludeCheckbox);
+  excludeLabel.appendChild(document.createTextNode('✕'));
+  row.appendChild(excludeLabel);
+
+  container.appendChild(row);
 }
 
 function renderTagFilterPanel() {
@@ -469,7 +492,7 @@ function renderTagFilterPanel() {
   divider.className = 'tag-filter-divider';
   tagFilterPanel.appendChild(divider);
 
-  knownTags.forEach(tag => appendTagCycleOption(tagFilterPanel, tag));
+  knownTags.forEach(tag => appendTagCheckboxRow(tagFilterPanel, tag));
 
   updateTagFilterCount();
 }
