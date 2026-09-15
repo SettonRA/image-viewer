@@ -27,13 +27,14 @@ const tagFilterPanel = document.getElementById('tag-filter-panel');
 const tagFilterClearBtn = document.getElementById('tag-filter-clear-btn');
 const lightboxTags = document.getElementById('lightbox-tags');
 
-let selectedTags = new Set();
+// Custom-tag filter state: tag name -> 'include' | 'exclude'. Cycles none -> include -> exclude -> none.
+let tagFilterState = new Map();
 let untaggedSelected = false;
 let favoritesOnly = false;
 let selectedTypeFilter = null; // 'image' | 'video' | null — mutually exclusive with each other
 
 function isTagFilterActive() {
-  return favoritesOnly || untaggedSelected || selectedTypeFilter !== null || selectedTags.size > 0;
+  return favoritesOnly || untaggedSelected || selectedTypeFilter !== null || tagFilterState.size > 0;
 }
 
 const ALLOWED_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'mp4']);
@@ -213,8 +214,11 @@ function filterByTags(images) {
   }
   if (untaggedSelected) {
     result = result.filter(img => img.tags.every(t => t === 'image' || t === 'video'));
-  } else if (selectedTags.size > 0) {
-    result = result.filter(img => [...selectedTags].every(t => img.tags.includes(t)));
+  } else if (tagFilterState.size > 0) {
+    for (const [tag, state] of tagFilterState) {
+      if (state === 'include') result = result.filter(img => img.tags.includes(tag));
+      else result = result.filter(img => !img.tags.includes(tag));
+    }
   }
   return result;
 }
@@ -364,7 +368,7 @@ function updateKnownTags() {
 }
 
 function updateTagFilterCount() {
-  const count = (favoritesOnly ? 1 : 0) + (selectedTypeFilter ? 1 : 0) + (untaggedSelected ? 1 : selectedTags.size);
+  const count = (favoritesOnly ? 1 : 0) + (selectedTypeFilter ? 1 : 0) + (untaggedSelected ? 1 : tagFilterState.size);
   tagFilterCount.textContent = count > 0 ? String(count) : '';
   tagFilterCount.classList.toggle('hidden', count === 0);
   tagFilterBtn.classList.toggle('active', count > 0);
@@ -389,11 +393,43 @@ function appendFilterOption(container, label, checked, onChange) {
   container.appendChild(option);
 }
 
+// Appends a tag option that cycles none -> include -> exclude -> none on each click.
+// Only custom tags get this; Favorites/Untagged/Image/Video are plain on-off checkboxes.
+function appendTagCycleOption(container, tag) {
+  const state = tagFilterState.get(tag); // 'include' | 'exclude' | undefined
+
+  const option = document.createElement('button');
+  option.type = 'button';
+  option.className = 'tag-filter-option tag-filter-cycle';
+  option.classList.toggle('tag-filter-include', state === 'include');
+  option.classList.toggle('tag-filter-exclude', state === 'exclude');
+
+  const icon = document.createElement('span');
+  icon.className = 'tag-filter-icon';
+  icon.textContent = state === 'include' ? '✓' : state === 'exclude' ? '✕' : '';
+
+  option.appendChild(icon);
+  option.appendChild(document.createTextNode(tag));
+  option.addEventListener('click', () => {
+    if (state === 'include') {
+      tagFilterState.set(tag, 'exclude');
+    } else if (state === 'exclude') {
+      tagFilterState.delete(tag);
+    } else {
+      tagFilterState.set(tag, 'include');
+    }
+    untaggedSelected = false; // mutually exclusive with any custom-tag filter
+    renderTagFilterPanel();
+    renderGallery();
+  });
+  container.appendChild(option);
+}
+
 function renderTagFilterPanel() {
   updateKnownTags();
 
   const knownSet = new Set(knownTags);
-  [...selectedTags].forEach(t => { if (!knownSet.has(t)) selectedTags.delete(t); });
+  [...tagFilterState.keys()].forEach(t => { if (!knownSet.has(t)) tagFilterState.delete(t); });
 
   tagFilterDropdown.classList.toggle('hidden', allImages.length === 0);
   if (allImages.length === 0) {
@@ -412,7 +448,7 @@ function renderTagFilterPanel() {
 
   appendFilterOption(tagFilterPanel, 'Untagged', untaggedSelected, checked => {
     untaggedSelected = checked;
-    if (untaggedSelected) selectedTags.clear(); // mutually exclusive with custom tags
+    if (untaggedSelected) tagFilterState.clear(); // mutually exclusive with custom tags
     renderTagFilterPanel();
     renderGallery();
   });
@@ -433,24 +469,13 @@ function renderTagFilterPanel() {
   divider.className = 'tag-filter-divider';
   tagFilterPanel.appendChild(divider);
 
-  knownTags.forEach(tag => {
-    appendFilterOption(tagFilterPanel, tag, selectedTags.has(tag), checked => {
-      if (checked) {
-        selectedTags.add(tag);
-        untaggedSelected = false; // mutually exclusive with "Untagged"
-      } else {
-        selectedTags.delete(tag);
-      }
-      renderTagFilterPanel();
-      renderGallery();
-    });
-  });
+  knownTags.forEach(tag => appendTagCycleOption(tagFilterPanel, tag));
 
   updateTagFilterCount();
 }
 
 tagFilterClearBtn.addEventListener('click', () => {
-  selectedTags.clear();
+  tagFilterState.clear();
   untaggedSelected = false;
   favoritesOnly = false;
   selectedTypeFilter = null;
