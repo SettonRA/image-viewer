@@ -31,8 +31,7 @@ const bulkBar = document.getElementById('bulk-bar');
 const bulkCount = document.getElementById('bulk-count');
 const bulkSelectAllBtn = document.getElementById('bulk-select-all-btn');
 const bulkClearBtn = document.getElementById('bulk-clear-btn');
-const bulkTagInput = document.getElementById('bulk-tag-input');
-const bulkTagDropdown = document.getElementById('bulk-tag-dropdown');
+const bulkTagAdderEl = document.getElementById('bulk-tag-adder');
 const bulkPendingTagsEl = document.getElementById('bulk-pending-tags');
 const bulkApplyBtn = document.getElementById('bulk-apply-btn');
 const bulkDoneBtn = document.getElementById('bulk-done-btn');
@@ -40,6 +39,7 @@ const bulkDoneBtn = document.getElementById('bulk-done-btn');
 let multiSelectMode = false;
 let selectedImageNames = new Set();
 let bulkPendingTags = []; // tags staged in the bulk bar, applied together on "Apply"
+let bulkAdderOpen = false; // whether the "+ tag" button has been swapped for the input+dropdown
 
 // Custom-tag filter state: tag name -> 'include' | 'exclude'. Cycles none -> include -> exclude -> none.
 let tagFilterState = new Map();
@@ -674,11 +674,11 @@ function setMultiSelectMode(on) {
   bulkBar.classList.toggle('hidden', !on);
   if (!on) {
     selectedImageNames.clear();
-    bulkTagInput.value = '';
-    bulkTagDropdown.classList.add('hidden');
     bulkPendingTags = [];
     renderBulkPendingTags();
   }
+  bulkAdderOpen = false;
+  renderBulkTagAdder();
   updateBulkBar();
   renderGallery();
 }
@@ -694,24 +694,82 @@ function updateBulkBar() {
   bulkCount.textContent = `${selectedImageNames.size} selected`;
 }
 
-function renderBulkTagDropdown() {
-  const query = bulkTagInput.value.trim().toLowerCase();
-  const staged = new Set(bulkPendingTags.map(t => t.toLowerCase()));
-  const options = knownTags.filter(t => !staged.has(t.toLowerCase()) && (!query || t.toLowerCase().includes(query)));
-  bulkTagDropdown.innerHTML = '';
-  bulkTagDropdown.classList.toggle('hidden', options.length === 0);
-  options.forEach(tag => {
-    const opt = document.createElement('button');
-    opt.type = 'button';
-    opt.className = 'tag-dropdown-item';
-    opt.textContent = tag;
-    // mousedown (not click) so this fires before the input's blur handler
-    opt.addEventListener('mousedown', ev => {
-      ev.preventDefault();
-      stageTag(tag);
+// Renders either the "+ tag" button, or (once clicked) an input+dropdown that stages one tag and
+// collapses back to the button — same reveal pattern as the per-image tag editor (buildTagsElement).
+function renderBulkTagAdder() {
+  bulkTagAdderEl.innerHTML = '';
+
+  if (!bulkAdderOpen) {
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'tag-add-btn';
+    addBtn.textContent = '+ tag';
+    addBtn.addEventListener('click', () => {
+      bulkAdderOpen = true;
+      renderBulkTagAdder();
     });
-    bulkTagDropdown.appendChild(opt);
+    bulkTagAdderEl.appendChild(addBtn);
+    return;
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'tag-input-wrapper';
+
+  const input = document.createElement('input');
+  input.className = 'tag-input';
+  input.type = 'text';
+  input.placeholder = 'tag name';
+  input.maxLength = 40;
+  input.setAttribute('autocomplete', 'off');
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'tag-dropdown hidden';
+
+  wrapper.appendChild(input);
+  wrapper.appendChild(dropdown);
+  bulkTagAdderEl.appendChild(wrapper);
+  input.focus();
+
+  let committed = false;
+  const commit = (value) => {
+    if (committed) return;
+    committed = true;
+    const val = (value !== undefined ? value : input.value).trim();
+    if (val) stageTag(val);
+    bulkAdderOpen = false;
+    renderBulkTagAdder();
+  };
+
+  function renderDropdown() {
+    const query = input.value.trim().toLowerCase();
+    const staged = new Set(bulkPendingTags.map(t => t.toLowerCase()));
+    const options = knownTags.filter(t => !staged.has(t.toLowerCase()) && (!query || t.toLowerCase().includes(query)));
+    dropdown.innerHTML = '';
+    dropdown.classList.toggle('hidden', options.length === 0);
+    options.forEach(tag => {
+      const opt = document.createElement('button');
+      opt.type = 'button';
+      opt.className = 'tag-dropdown-item';
+      opt.textContent = tag;
+      // mousedown (not click) so this fires before the input's blur handler
+      opt.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        commit(tag);
+      });
+      dropdown.appendChild(opt);
+    });
+  }
+
+  input.addEventListener('click', e => e.stopPropagation());
+  input.addEventListener('input', renderDropdown);
+  input.addEventListener('focus', renderDropdown);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { committed = true; bulkAdderOpen = false; renderBulkTagAdder(); }
   });
+  input.addEventListener('blur', () => commit());
+
+  renderDropdown();
 }
 
 function renderBulkPendingTags() {
@@ -742,16 +800,9 @@ function stageTag(rawTag) {
     bulkPendingTags.push(tag);
     renderBulkPendingTags();
   }
-  bulkTagInput.value = '';
-  bulkTagDropdown.classList.add('hidden');
-  bulkTagInput.focus();
 }
 
 async function applyBulkTags() {
-  // Commit whatever's still typed but not staged yet, so hitting Apply doesn't silently drop it
-  const typed = bulkTagInput.value.trim();
-  if (typed) stageTag(typed);
-
   if (bulkPendingTags.length === 0) {
     showToast('Add at least one tag first.', 'error');
     return;
@@ -789,13 +840,6 @@ bulkClearBtn.addEventListener('click', () => {
   renderGallery();
 });
 
-bulkTagInput.addEventListener('input', renderBulkTagDropdown);
-bulkTagInput.addEventListener('focus', renderBulkTagDropdown);
-bulkTagInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); stageTag(bulkTagInput.value); }
-  if (e.key === 'Escape') { bulkTagDropdown.classList.add('hidden'); }
-});
-bulkTagInput.addEventListener('blur', () => bulkTagDropdown.classList.add('hidden'));
 bulkApplyBtn.addEventListener('click', () => applyBulkTags());
 
 const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;

@@ -260,6 +260,11 @@ header h1 {
   white-space: nowrap;
 }
 
+.bulk-tag-adder {
+  display: flex;
+  align-items: center;
+}
+
 .bulk-pending-tags {
   display: flex;
   flex-wrap: wrap;
