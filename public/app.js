@@ -33,11 +33,13 @@ const bulkSelectAllBtn = document.getElementById('bulk-select-all-btn');
 const bulkClearBtn = document.getElementById('bulk-clear-btn');
 const bulkTagInput = document.getElementById('bulk-tag-input');
 const bulkTagDropdown = document.getElementById('bulk-tag-dropdown');
+const bulkPendingTagsEl = document.getElementById('bulk-pending-tags');
 const bulkApplyBtn = document.getElementById('bulk-apply-btn');
 const bulkDoneBtn = document.getElementById('bulk-done-btn');
 
 let multiSelectMode = false;
 let selectedImageNames = new Set();
+let bulkPendingTags = []; // tags staged in the bulk bar, applied together on "Apply"
 
 // Custom-tag filter state: tag name -> 'include' | 'exclude'. Cycles none -> include -> exclude -> none.
 let tagFilterState = new Map();
@@ -254,18 +256,18 @@ async function addTag(image, tag) {
 
 // Applies one tag to many images in a single request (avoids firing hundreds of individual
 // requests against the shared .tags.json file, which would race and lose updates).
-async function bulkAddTag(filenames, tag) {
+async function bulkAddTags(filenames, tags) {
   try {
     const res = await fetch('/api/tags/bulk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filenames, tags: [tag] }),
+      body: JSON.stringify({ filenames, tags }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Failed to apply tag');
+    if (!res.ok) throw new Error(data.error || 'Failed to apply tags');
     return data;
   } catch (err) {
-    showToast(err.message || 'Could not apply tag.', 'error');
+    showToast(err.message || 'Could not apply tags.', 'error');
     return null;
   }
 }
@@ -674,6 +676,8 @@ function setMultiSelectMode(on) {
     selectedImageNames.clear();
     bulkTagInput.value = '';
     bulkTagDropdown.classList.add('hidden');
+    bulkPendingTags = [];
+    renderBulkPendingTags();
   }
   updateBulkBar();
   renderGallery();
@@ -688,12 +692,12 @@ function toggleImageSelected(name) {
 
 function updateBulkBar() {
   bulkCount.textContent = `${selectedImageNames.size} selected`;
-  bulkApplyBtn.disabled = selectedImageNames.size === 0;
 }
 
 function renderBulkTagDropdown() {
   const query = bulkTagInput.value.trim().toLowerCase();
-  const options = knownTags.filter(t => !query || t.toLowerCase().includes(query));
+  const staged = new Set(bulkPendingTags.map(t => t.toLowerCase()));
+  const options = knownTags.filter(t => !staged.has(t.toLowerCase()) && (!query || t.toLowerCase().includes(query)));
   bulkTagDropdown.innerHTML = '';
   bulkTagDropdown.classList.toggle('hidden', options.length === 0);
   options.forEach(tag => {
@@ -704,28 +708,68 @@ function renderBulkTagDropdown() {
     // mousedown (not click) so this fires before the input's blur handler
     opt.addEventListener('mousedown', ev => {
       ev.preventDefault();
-      applyBulkTag(tag);
+      stageTag(tag);
     });
     bulkTagDropdown.appendChild(opt);
   });
 }
 
-async function applyBulkTag(tagOverride) {
-  const tag = (tagOverride !== undefined ? tagOverride : bulkTagInput.value).trim();
+function renderBulkPendingTags() {
+  bulkPendingTagsEl.innerHTML = '';
+  bulkPendingTags.forEach(tag => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.textContent = tag;
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'tag-remove';
+    rm.textContent = '×';
+    rm.setAttribute('aria-label', `Remove staged tag "${tag}"`);
+    rm.addEventListener('click', () => {
+      bulkPendingTags = bulkPendingTags.filter(t => t !== tag);
+      renderBulkPendingTags();
+    });
+    chip.appendChild(rm);
+    bulkPendingTagsEl.appendChild(chip);
+  });
+}
+
+// Adds a tag to the staged list (not yet sent to the server — "Apply" sends them all at once).
+function stageTag(rawTag) {
+  const tag = rawTag.trim();
   if (!tag) return;
+  if (!bulkPendingTags.some(t => t.toLowerCase() === tag.toLowerCase())) {
+    bulkPendingTags.push(tag);
+    renderBulkPendingTags();
+  }
+  bulkTagInput.value = '';
+  bulkTagDropdown.classList.add('hidden');
+  bulkTagInput.focus();
+}
+
+async function applyBulkTags() {
+  // Commit whatever's still typed but not staged yet, so hitting Apply doesn't silently drop it
+  const typed = bulkTagInput.value.trim();
+  if (typed) stageTag(typed);
+
+  if (bulkPendingTags.length === 0) {
+    showToast('Add at least one tag first.', 'error');
+    return;
+  }
   if (selectedImageNames.size === 0) {
     showToast('Select at least one image first.', 'error');
     return;
   }
 
   const filenames = [...selectedImageNames];
-  const data = await bulkAddTag(filenames, tag);
+  const tags = [...bulkPendingTags];
+  const data = await bulkAddTags(filenames, tags);
   if (!data) return;
 
-  bulkTagInput.value = '';
-  bulkTagDropdown.classList.add('hidden');
+  bulkPendingTags = [];
+  renderBulkPendingTags();
   const skippedNote = data.skipped.length ? ` (${data.skipped.length} skipped)` : '';
-  showToast(`Applied "${data.tags[0]}" to ${data.updated.length} image${data.updated.length !== 1 ? 's' : ''}${skippedNote}.`, 'success');
+  showToast(`Applied ${data.tags.length} tag${data.tags.length !== 1 ? 's' : ''} to ${data.updated.length} image${data.updated.length !== 1 ? 's' : ''}${skippedNote}.`, 'success');
 
   await loadImages(); // refreshes tags/knownTags/filter panel; keeps current selection + mode
 }
@@ -748,11 +792,11 @@ bulkClearBtn.addEventListener('click', () => {
 bulkTagInput.addEventListener('input', renderBulkTagDropdown);
 bulkTagInput.addEventListener('focus', renderBulkTagDropdown);
 bulkTagInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); applyBulkTag(); }
+  if (e.key === 'Enter') { e.preventDefault(); stageTag(bulkTagInput.value); }
   if (e.key === 'Escape') { bulkTagDropdown.classList.add('hidden'); }
 });
 bulkTagInput.addEventListener('blur', () => bulkTagDropdown.classList.add('hidden'));
-bulkApplyBtn.addEventListener('click', () => applyBulkTag());
+bulkApplyBtn.addEventListener('click', () => applyBulkTags());
 
 const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
 

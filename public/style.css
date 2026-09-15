@@ -23,10 +23,13 @@ body {
 }
 
 /* Header */
-header {
+.sticky-top {
   position: sticky;
   top: 0;
   z-index: 100;
+}
+
+header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 12px 20px;
@@ -257,6 +260,13 @@ header h1 {
   white-space: nowrap;
 }
 
+.bulk-pending-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
 .bulk-btn {
   padding: 5px 12px;
   font-family: inherit;
@@ -284,13 +294,6 @@ header h1 {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
   color: #fff;
-}
-
-.bulk-apply-btn:disabled {
-  background: var(--bg);
-  border-color: var(--border);
-  color: var(--text-muted);
-  cursor: not-allowed;
 }
 
 #bulk-tag-input {

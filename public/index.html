@@ -7,45 +7,48 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <h1>Image Viewer</h1>
-    <div class="toolbar">
-      <span id="image-count"></span>
-      <div class="tag-filter-dropdown hidden" id="tag-filter-dropdown">
-        <button id="tag-filter-btn" class="tag-filter-btn" type="button" aria-haspopup="true" aria-expanded="false">
-          Filter
-          <span id="tag-filter-count" class="tag-filter-count hidden"></span>
-        </button>
-        <div id="tag-filter-panel" class="tag-filter-panel hidden"></div>
-      </div>
-      <button id="tag-filter-clear-btn" class="tag-filter-clear-btn hidden" type="button">Clear filter</button>
-      <button id="multiselect-btn" class="slideshow-btn" type="button" title="Select multiple images to bulk-tag" aria-pressed="false">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-        Select
-      </button>
-      <button id="slideshow-btn" class="slideshow-btn" title="Start slideshow" aria-label="Start slideshow" aria-pressed="false">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Slideshow
-      </button>
-      <div class="storage-meter" id="storage-meter" title="Storage used">
-        <div class="storage-bar-track">
-          <div id="storage-bar" class="storage-bar"></div>
+  <div class="sticky-top">
+    <header>
+      <h1>Image Viewer</h1>
+      <div class="toolbar">
+        <span id="image-count"></span>
+        <div class="tag-filter-dropdown hidden" id="tag-filter-dropdown">
+          <button id="tag-filter-btn" class="tag-filter-btn" type="button" aria-haspopup="true" aria-expanded="false">
+            Filter
+            <span id="tag-filter-count" class="tag-filter-count hidden"></span>
+          </button>
+          <div id="tag-filter-panel" class="tag-filter-panel hidden"></div>
         </div>
-        <span id="storage-text" class="storage-text"></span>
+        <button id="tag-filter-clear-btn" class="tag-filter-clear-btn hidden" type="button">Clear filter</button>
+        <button id="multiselect-btn" class="slideshow-btn" type="button" title="Select multiple images to bulk-tag" aria-pressed="false">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Select
+        </button>
+        <button id="slideshow-btn" class="slideshow-btn" title="Start slideshow" aria-label="Start slideshow" aria-pressed="false">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Slideshow
+        </button>
+        <div class="storage-meter" id="storage-meter" title="Storage used">
+          <div class="storage-bar-track">
+            <div id="storage-bar" class="storage-bar"></div>
+          </div>
+          <span id="storage-text" class="storage-text"></span>
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <div id="bulk-bar" class="bulk-bar hidden">
-    <span id="bulk-count" class="bulk-count">0 selected</span>
-    <button id="bulk-select-all-btn" class="bulk-btn" type="button">Select all filtered</button>
-    <button id="bulk-clear-btn" class="bulk-btn" type="button">Clear selection</button>
-    <div class="tag-input-wrapper">
-      <input id="bulk-tag-input" class="tag-input" type="text" placeholder="tag name" autocomplete="off" maxlength="40" />
-      <div id="bulk-tag-dropdown" class="tag-dropdown hidden"></div>
+    <div id="bulk-bar" class="bulk-bar hidden">
+      <span id="bulk-count" class="bulk-count">0 selected</span>
+      <button id="bulk-select-all-btn" class="bulk-btn" type="button">Select all filtered</button>
+      <button id="bulk-clear-btn" class="bulk-btn" type="button">Clear selection</button>
+      <div class="tag-input-wrapper">
+        <input id="bulk-tag-input" class="tag-input" type="text" placeholder="tag name, Enter to stage" autocomplete="off" maxlength="40" />
+        <div id="bulk-tag-dropdown" class="tag-dropdown hidden"></div>
+      </div>
+      <div id="bulk-pending-tags" class="bulk-pending-tags"></div>
+      <button id="bulk-apply-btn" class="bulk-btn bulk-apply-btn" type="button">Apply</button>
+      <button id="bulk-done-btn" class="bulk-btn bulk-done-btn" type="button">Done</button>
     </div>
-    <button id="bulk-apply-btn" class="bulk-btn bulk-apply-btn" type="button">Apply tag</button>
-    <button id="bulk-done-btn" class="bulk-btn bulk-done-btn" type="button">Done</button>
   </div>
 
   <main>
