@@ -159,31 +159,6 @@ header h1 {
   padding: 6px;
 }
 
-.tag-filter-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 8px;
-  font-family: inherit;
-  font-size: 0.85rem;
-  color: var(--text);
-  background: none;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.tag-filter-option:hover {
-  background: var(--bg);
-}
-
-.tag-filter-option input {
-  cursor: pointer;
-}
-
 .tag-filter-row {
   display: flex;
   align-items: center;
@@ -230,7 +205,7 @@ header h1 {
   color: transparent;
 }
 
-.tag-filter-fakebox.include {
+.tag-filter-fakebox.on {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;

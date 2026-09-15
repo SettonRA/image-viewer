@@ -382,22 +382,31 @@ function closeTagFilterPanel() {
 
 // Appends a labeled checkbox option to the filter panel; `onChange` receives the new checked state.
 function appendFilterOption(container, label, checked, onChange) {
-  const option = document.createElement('label');
-  option.className = 'tag-filter-option';
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.checked = checked;
-  checkbox.addEventListener('change', () => onChange(checkbox.checked));
-  option.appendChild(checkbox);
-  option.appendChild(document.createTextNode(label));
+  const option = document.createElement('button');
+  option.type = 'button';
+  option.className = 'tag-filter-row tag-filter-row-clickable';
+  option.setAttribute('aria-pressed', String(checked));
+
+  const box = document.createElement('span');
+  box.className = 'tag-filter-fakebox' + (checked ? ' on' : '');
+  box.textContent = checked ? '✓' : '';
+  option.appendChild(box);
+
+  const name = document.createElement('span');
+  name.className = 'tag-filter-tagname';
+  name.textContent = label;
+  option.appendChild(name);
+
+  option.addEventListener('click', () => onChange(!checked));
   container.appendChild(option);
 }
 
 // Appends a tag row with a single checkbox-styled control that cycles none -> include -> exclude
-// -> none on each click. Only custom tags get this; Favorites/Untagged/Image/Video are plain
-// on-off checkboxes. The control is a <button> (not a real checkbox, since a checkbox can't hold
-// 3 states) styled to look like one; the document-level "close on outside click" listener uses
-// composedPath() so it isn't fooled when this click rebuilds the panel's DOM mid-bubble.
+// -> none on each click. Only custom tags get this three-state cycle; Favorites/Untagged/Image/
+// Video (appendFilterOption) share the same fake-checkbox look but are plain two-state toggles.
+// Both use a <button> styled to look like a checkbox (a real checkbox can't hold 3 states); the
+// document-level "close on outside click" listener uses composedPath() so it isn't fooled when a
+// click here rebuilds the panel's DOM mid-bubble.
 function appendTagCheckboxRow(container, tag) {
   const state = tagFilterState.get(tag); // 'include' | 'exclude' | undefined
 
@@ -407,7 +416,7 @@ function appendTagCheckboxRow(container, tag) {
   row.setAttribute('aria-label', `Filter by tag "${tag}": ${state || 'not applied'}`);
 
   const box = document.createElement('span');
-  box.className = 'tag-filter-fakebox' + (state ? ` ${state}` : '');
+  box.className = 'tag-filter-fakebox' + (state === 'include' ? ' on' : state === 'exclude' ? ' exclude' : '');
   box.textContent = state === 'include' ? '✓' : state === 'exclude' ? '✕' : '';
   row.appendChild(box);
 
