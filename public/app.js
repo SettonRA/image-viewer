@@ -30,9 +30,10 @@ const lightboxTags = document.getElementById('lightbox-tags');
 let selectedTags = new Set();
 let untaggedSelected = false;
 let favoritesOnly = false;
+let selectedTypeFilter = null; // 'image' | 'video' | null — mutually exclusive with each other
 
 function isTagFilterActive() {
-  return favoritesOnly || untaggedSelected || selectedTags.size > 0;
+  return favoritesOnly || untaggedSelected || selectedTypeFilter !== null || selectedTags.size > 0;
 }
 
 const ALLOWED_EXTS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'mp4']);
@@ -207,6 +208,9 @@ function filterByTags(images) {
   if (favoritesOnly) {
     result = result.filter(img => img.favorite);
   }
+  if (selectedTypeFilter) {
+    result = result.filter(img => img.type === selectedTypeFilter);
+  }
   if (untaggedSelected) {
     result = result.filter(img => img.tags.every(t => t === 'image' || t === 'video'));
   } else if (selectedTags.size > 0) {
@@ -359,17 +363,8 @@ function updateKnownTags() {
   knownTags = [...userTags].sort((a, b) => a.localeCompare(b));
 }
 
-// 'image'/'video' first (most useful quick filters), then the rest alphabetically.
-function sortTagsForFilter(tags) {
-  const priority = t => (t === 'image' ? 0 : t === 'video' ? 1 : 2);
-  return [...tags].sort((a, b) => {
-    const diff = priority(a) - priority(b);
-    return diff !== 0 ? diff : a.localeCompare(b);
-  });
-}
-
 function updateTagFilterCount() {
-  const count = (favoritesOnly ? 1 : 0) + (untaggedSelected ? 1 : selectedTags.size);
+  const count = (favoritesOnly ? 1 : 0) + (selectedTypeFilter ? 1 : 0) + (untaggedSelected ? 1 : selectedTags.size);
   tagFilterCount.textContent = count > 0 ? String(count) : '';
   tagFilterCount.classList.toggle('hidden', count === 0);
   tagFilterBtn.classList.toggle('active', count > 0);
@@ -381,15 +376,27 @@ function closeTagFilterPanel() {
   tagFilterBtn.setAttribute('aria-expanded', 'false');
 }
 
+// Appends a labeled checkbox option to the filter panel; `onChange` receives the new checked state.
+function appendFilterOption(container, label, checked, onChange) {
+  const option = document.createElement('label');
+  option.className = 'tag-filter-option';
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = checked;
+  checkbox.addEventListener('change', () => onChange(checkbox.checked));
+  option.appendChild(checkbox);
+  option.appendChild(document.createTextNode(label));
+  container.appendChild(option);
+}
+
 function renderTagFilterPanel() {
   updateKnownTags();
 
-  const allTags = new Set();
-  allImages.forEach(img => img.tags.forEach(t => allTags.add(t)));
-  [...selectedTags].forEach(t => { if (!allTags.has(t)) selectedTags.delete(t); });
+  const knownSet = new Set(knownTags);
+  [...selectedTags].forEach(t => { if (!knownSet.has(t)) selectedTags.delete(t); });
 
-  tagFilterDropdown.classList.toggle('hidden', allTags.size === 0);
-  if (allTags.size === 0) {
+  tagFilterDropdown.classList.toggle('hidden', allImages.length === 0);
+  if (allImages.length === 0) {
     closeTagFilterPanel();
     updateTagFilterCount();
     return;
@@ -397,48 +404,38 @@ function renderTagFilterPanel() {
 
   tagFilterPanel.innerHTML = '';
 
-  const favoritesOption = document.createElement('label');
-  favoritesOption.className = 'tag-filter-option';
-  const favoritesCheckbox = document.createElement('input');
-  favoritesCheckbox.type = 'checkbox';
-  favoritesCheckbox.checked = favoritesOnly;
-  favoritesCheckbox.addEventListener('change', () => {
-    favoritesOnly = favoritesCheckbox.checked;
+  appendFilterOption(tagFilterPanel, '★ Favorites', favoritesOnly, checked => {
+    favoritesOnly = checked;
     renderTagFilterPanel();
     renderGallery();
   });
-  favoritesOption.appendChild(favoritesCheckbox);
-  favoritesOption.appendChild(document.createTextNode('★ Favorites'));
-  tagFilterPanel.appendChild(favoritesOption);
 
-  const untaggedOption = document.createElement('label');
-  untaggedOption.className = 'tag-filter-option';
-  const untaggedCheckbox = document.createElement('input');
-  untaggedCheckbox.type = 'checkbox';
-  untaggedCheckbox.checked = untaggedSelected;
-  untaggedCheckbox.addEventListener('change', () => {
-    untaggedSelected = untaggedCheckbox.checked;
-    if (untaggedSelected) selectedTags.clear(); // mutually exclusive with tag filters
+  appendFilterOption(tagFilterPanel, 'Untagged', untaggedSelected, checked => {
+    untaggedSelected = checked;
+    if (untaggedSelected) selectedTags.clear(); // mutually exclusive with custom tags
     renderTagFilterPanel();
     renderGallery();
   });
-  untaggedOption.appendChild(untaggedCheckbox);
-  untaggedOption.appendChild(document.createTextNode('Untagged'));
-  tagFilterPanel.appendChild(untaggedOption);
+
+  appendFilterOption(tagFilterPanel, 'Image', selectedTypeFilter === 'image', checked => {
+    selectedTypeFilter = checked ? 'image' : null;
+    renderTagFilterPanel();
+    renderGallery();
+  });
+
+  appendFilterOption(tagFilterPanel, 'Video', selectedTypeFilter === 'video', checked => {
+    selectedTypeFilter = checked ? 'video' : null;
+    renderTagFilterPanel();
+    renderGallery();
+  });
 
   const divider = document.createElement('div');
   divider.className = 'tag-filter-divider';
   tagFilterPanel.appendChild(divider);
 
-  const sorted = sortTagsForFilter(allTags);
-  sorted.forEach(tag => {
-    const option = document.createElement('label');
-    option.className = 'tag-filter-option';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = selectedTags.has(tag);
-    checkbox.addEventListener('change', () => {
-      if (checkbox.checked) {
+  knownTags.forEach(tag => {
+    appendFilterOption(tagFilterPanel, tag, selectedTags.has(tag), checked => {
+      if (checked) {
         selectedTags.add(tag);
         untaggedSelected = false; // mutually exclusive with "Untagged"
       } else {
@@ -447,9 +444,6 @@ function renderTagFilterPanel() {
       renderTagFilterPanel();
       renderGallery();
     });
-    option.appendChild(checkbox);
-    option.appendChild(document.createTextNode(tag));
-    tagFilterPanel.appendChild(option);
   });
 
   updateTagFilterCount();
@@ -459,6 +453,7 @@ tagFilterClearBtn.addEventListener('click', () => {
   selectedTags.clear();
   untaggedSelected = false;
   favoritesOnly = false;
+  selectedTypeFilter = null;
   renderTagFilterPanel();
   renderGallery();
 });
