@@ -248,6 +248,43 @@ app.delete('/api/favorites/:filename', (req, res) => {
   res.json({ favorite: false, name: filename });
 });
 
+// API: add one or more tags to many images at once (one read-modify-write, not one per file —
+// avoids the lost-update race that firing N individual /api/tags/:filename requests would hit).
+app.post('/api/tags/bulk', (req, res) => {
+  const filenames = Array.isArray(req.body && req.body.filenames) ? req.body.filenames : [];
+  const rawTags = Array.isArray(req.body && req.body.tags) ? req.body.tags : [];
+
+  const seenLower = new Set();
+  const tags = rawTags
+    .map(normalizeTag)
+    .filter(t => t && !AUTO_TAGS.has(t.toLowerCase()))
+    .filter(t => (seenLower.has(t.toLowerCase()) ? false : (seenLower.add(t.toLowerCase()), true)));
+
+  if (filenames.length === 0) return res.status(400).json({ error: 'filenames is required' });
+  if (tags.length === 0) return res.status(400).json({ error: 'At least one valid tag is required' });
+
+  const tagsMap = loadTags();
+  const updated = [];
+  const skipped = [];
+
+  for (const rawName of filenames) {
+    const filename = path.basename(decodeURIComponent(rawName));
+    const ext = path.extname(filename).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext) || !fs.existsSync(path.join(IMAGES_DIR, filename))) {
+      skipped.push(filename);
+      continue;
+    }
+    const existing = tagsMap[filename] || [];
+    const existingLower = new Set(existing.map(t => t.toLowerCase()));
+    const toAdd = tags.filter(t => !existingLower.has(t.toLowerCase()));
+    if (toAdd.length > 0) tagsMap[filename] = [...existing, ...toAdd];
+    updated.push(filename);
+  }
+
+  saveTags(tagsMap);
+  res.json({ updated, skipped, tags });
+});
+
 // API: add a tag to an image
 app.post('/api/tags/:filename', (req, res) => {
   const filename = path.basename(decodeURIComponent(req.params.filename));

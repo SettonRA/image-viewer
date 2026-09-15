@@ -240,6 +240,97 @@ header h1 {
   border-color: var(--accent);
 }
 
+/* Bulk select bar */
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.bulk-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.bulk-btn {
+  padding: 5px 12px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.bulk-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.bulk-apply-btn {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.bulk-apply-btn:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #fff;
+}
+
+.bulk-apply-btn:disabled {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+#bulk-tag-input {
+  width: 160px;
+}
+
+/* Selection badge shown on gallery cards while multi-select mode is active */
+.select-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.75);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.select-badge.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.card-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.gallery.multiselect-mode .star-btn,
+.gallery.multiselect-mode .card-actions {
+  display: none;
+}
+
 /* Per-image tag row (lightbox only) */
 .tag-row {
   display: flex;

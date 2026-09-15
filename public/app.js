@@ -26,6 +26,18 @@ const tagFilterCount = document.getElementById('tag-filter-count');
 const tagFilterPanel = document.getElementById('tag-filter-panel');
 const tagFilterClearBtn = document.getElementById('tag-filter-clear-btn');
 const lightboxTags = document.getElementById('lightbox-tags');
+const multiselectBtn = document.getElementById('multiselect-btn');
+const bulkBar = document.getElementById('bulk-bar');
+const bulkCount = document.getElementById('bulk-count');
+const bulkSelectAllBtn = document.getElementById('bulk-select-all-btn');
+const bulkClearBtn = document.getElementById('bulk-clear-btn');
+const bulkTagInput = document.getElementById('bulk-tag-input');
+const bulkTagDropdown = document.getElementById('bulk-tag-dropdown');
+const bulkApplyBtn = document.getElementById('bulk-apply-btn');
+const bulkDoneBtn = document.getElementById('bulk-done-btn');
+
+let multiSelectMode = false;
+let selectedImageNames = new Set();
 
 // Custom-tag filter state: tag name -> 'include' | 'exclude'. Cycles none -> include -> exclude -> none.
 let tagFilterState = new Map();
@@ -237,6 +249,24 @@ async function addTag(image, tag) {
     image.tags = data.tags;
   } catch (err) {
     showToast(err.message || 'Could not add tag.', 'error');
+  }
+}
+
+// Applies one tag to many images in a single request (avoids firing hundreds of individual
+// requests against the shared .tags.json file, which would race and lose updates).
+async function bulkAddTag(filenames, tag) {
+  try {
+    const res = await fetch('/api/tags/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filenames, tags: [tag] }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to apply tag');
+    return data;
+  } catch (err) {
+    showToast(err.message || 'Could not apply tag.', 'error');
+    return null;
   }
 }
 
@@ -530,6 +560,7 @@ function renderGallery() {
   filteredImages = sortImages(filterByTags(allImages));
 
   gallery.innerHTML = '';
+  gallery.classList.toggle('multiselect-mode', multiSelectMode);
 
   if (filteredImages.length === 0) {
     emptyState.classList.remove('hidden');
@@ -578,10 +609,25 @@ function renderGallery() {
     }
 
     item.appendChild(media);
-    item.addEventListener('click', () => openLightbox(index));
-    item.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') openLightbox(index);
+    item.addEventListener('click', () => {
+      if (multiSelectMode) toggleImageSelected(image.name);
+      else openLightbox(index);
     });
+    item.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      if (multiSelectMode) toggleImageSelected(image.name);
+      else openLightbox(index);
+    });
+
+    if (multiSelectMode) {
+      const selected = selectedImageNames.has(image.name);
+      card.classList.toggle('card-selected', selected);
+      const selectBadge = document.createElement('span');
+      selectBadge.className = 'select-badge' + (selected ? ' on' : '');
+      selectBadge.textContent = selected ? '✓' : '';
+      item.appendChild(selectBadge);
+    }
 
     // Star / favorite button
     const starBtn = document.createElement('button');
@@ -616,6 +662,97 @@ function renderGallery() {
     gallery.appendChild(card);
   });
 }
+
+// ── Bulk select & tagging ────────────────────────────────────────────────────
+
+function setMultiSelectMode(on) {
+  multiSelectMode = on;
+  multiselectBtn.classList.toggle('active', on);
+  multiselectBtn.setAttribute('aria-pressed', String(on));
+  bulkBar.classList.toggle('hidden', !on);
+  if (!on) {
+    selectedImageNames.clear();
+    bulkTagInput.value = '';
+    bulkTagDropdown.classList.add('hidden');
+  }
+  updateBulkBar();
+  renderGallery();
+}
+
+function toggleImageSelected(name) {
+  if (selectedImageNames.has(name)) selectedImageNames.delete(name);
+  else selectedImageNames.add(name);
+  updateBulkBar();
+  renderGallery();
+}
+
+function updateBulkBar() {
+  bulkCount.textContent = `${selectedImageNames.size} selected`;
+  bulkApplyBtn.disabled = selectedImageNames.size === 0;
+}
+
+function renderBulkTagDropdown() {
+  const query = bulkTagInput.value.trim().toLowerCase();
+  const options = knownTags.filter(t => !query || t.toLowerCase().includes(query));
+  bulkTagDropdown.innerHTML = '';
+  bulkTagDropdown.classList.toggle('hidden', options.length === 0);
+  options.forEach(tag => {
+    const opt = document.createElement('button');
+    opt.type = 'button';
+    opt.className = 'tag-dropdown-item';
+    opt.textContent = tag;
+    // mousedown (not click) so this fires before the input's blur handler
+    opt.addEventListener('mousedown', ev => {
+      ev.preventDefault();
+      applyBulkTag(tag);
+    });
+    bulkTagDropdown.appendChild(opt);
+  });
+}
+
+async function applyBulkTag(tagOverride) {
+  const tag = (tagOverride !== undefined ? tagOverride : bulkTagInput.value).trim();
+  if (!tag) return;
+  if (selectedImageNames.size === 0) {
+    showToast('Select at least one image first.', 'error');
+    return;
+  }
+
+  const filenames = [...selectedImageNames];
+  const data = await bulkAddTag(filenames, tag);
+  if (!data) return;
+
+  bulkTagInput.value = '';
+  bulkTagDropdown.classList.add('hidden');
+  const skippedNote = data.skipped.length ? ` (${data.skipped.length} skipped)` : '';
+  showToast(`Applied "${data.tags[0]}" to ${data.updated.length} image${data.updated.length !== 1 ? 's' : ''}${skippedNote}.`, 'success');
+
+  await loadImages(); // refreshes tags/knownTags/filter panel; keeps current selection + mode
+}
+
+multiselectBtn.addEventListener('click', () => setMultiSelectMode(!multiSelectMode));
+bulkDoneBtn.addEventListener('click', () => setMultiSelectMode(false));
+
+bulkSelectAllBtn.addEventListener('click', () => {
+  filteredImages.forEach(img => selectedImageNames.add(img.name));
+  updateBulkBar();
+  renderGallery();
+});
+
+bulkClearBtn.addEventListener('click', () => {
+  selectedImageNames.clear();
+  updateBulkBar();
+  renderGallery();
+});
+
+bulkTagInput.addEventListener('input', renderBulkTagDropdown);
+bulkTagInput.addEventListener('focus', renderBulkTagDropdown);
+bulkTagInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); applyBulkTag(); }
+  if (e.key === 'Escape') { bulkTagDropdown.classList.add('hidden'); }
+});
+bulkTagInput.addEventListener('blur', () => bulkTagDropdown.classList.add('hidden'));
+bulkApplyBtn.addEventListener('click', () => applyBulkTag());
 
 const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
 
