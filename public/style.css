@@ -187,9 +187,18 @@ header h1 {
 .tag-filter-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 4px 8px;
   border-radius: 4px;
+}
+
+.tag-filter-row-clickable {
+  width: 100%;
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
 }
 
 .tag-filter-row:hover {
@@ -206,25 +215,31 @@ header h1 {
   white-space: nowrap;
 }
 
-.tag-filter-check {
+.tag-filter-fakebox {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-size: 0.75rem;
-  cursor: pointer;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
   flex-shrink: 0;
+  border: 1px solid var(--text-muted);
+  border-radius: 3px;
+  background: var(--bg);
+  font-size: 0.68rem;
+  line-height: 1;
+  color: transparent;
 }
 
-.tag-filter-check input {
-  cursor: pointer;
+.tag-filter-fakebox.include {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
-.tag-filter-check-include {
-  color: var(--accent-hover);
-}
-
-.tag-filter-check-exclude {
-  color: #e07070;
+.tag-filter-fakebox.exclude {
+  background: #6a2e2e;
+  border-color: #e07070;
+  color: #f5b5b5;
 }
 
 .tag-filter-divider {

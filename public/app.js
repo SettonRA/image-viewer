@@ -393,57 +393,41 @@ function appendFilterOption(container, label, checked, onChange) {
   container.appendChild(option);
 }
 
-// Appends a tag row with separate Include/Exclude checkboxes (mutually exclusive with each other).
-// Only custom tags get this; Favorites/Untagged/Image/Video are plain on-off checkboxes.
-// Two real checkboxes (rather than one element cycling through states on click) so each toggle
-// is a 'change' event, not a 'click' — the document-level "close on outside click" listener only
-// listens for 'click', so a checkbox toggle can rebuild the panel's DOM without that listener
-// mistaking the (now-detached) click target for a click outside the dropdown.
+// Appends a tag row with a single checkbox-styled control that cycles none -> include -> exclude
+// -> none on each click. Only custom tags get this; Favorites/Untagged/Image/Video are plain
+// on-off checkboxes. The control is a <button> (not a real checkbox, since a checkbox can't hold
+// 3 states) styled to look like one; the document-level "close on outside click" listener uses
+// composedPath() so it isn't fooled when this click rebuilds the panel's DOM mid-bubble.
 function appendTagCheckboxRow(container, tag) {
   const state = tagFilterState.get(tag); // 'include' | 'exclude' | undefined
 
-  const row = document.createElement('div');
-  row.className = 'tag-filter-row';
+  const row = document.createElement('button');
+  row.type = 'button';
+  row.className = 'tag-filter-row tag-filter-row-clickable';
+  row.setAttribute('aria-label', `Filter by tag "${tag}": ${state || 'not applied'}`);
+
+  const box = document.createElement('span');
+  box.className = 'tag-filter-fakebox' + (state ? ` ${state}` : '');
+  box.textContent = state === 'include' ? '✓' : state === 'exclude' ? '✕' : '';
+  row.appendChild(box);
 
   const name = document.createElement('span');
   name.className = 'tag-filter-tagname';
   name.textContent = tag;
   row.appendChild(name);
 
-  function setState(next) {
-    if (next) {
-      tagFilterState.set(tag, next);
-      untaggedSelected = false; // mutually exclusive with any custom-tag filter
-    } else {
+  row.addEventListener('click', () => {
+    if (state === 'include') {
+      tagFilterState.set(tag, 'exclude');
+    } else if (state === 'exclude') {
       tagFilterState.delete(tag);
+    } else {
+      tagFilterState.set(tag, 'include');
     }
+    untaggedSelected = false; // mutually exclusive with any custom-tag filter
     renderTagFilterPanel();
     renderGallery();
-  }
-
-  const includeLabel = document.createElement('label');
-  includeLabel.className = 'tag-filter-check tag-filter-check-include';
-  includeLabel.title = `Include "${tag}"`;
-  const includeCheckbox = document.createElement('input');
-  includeCheckbox.type = 'checkbox';
-  includeCheckbox.checked = state === 'include';
-  includeCheckbox.setAttribute('aria-label', `Include tag "${tag}"`);
-  includeCheckbox.addEventListener('change', () => setState(includeCheckbox.checked ? 'include' : null));
-  includeLabel.appendChild(includeCheckbox);
-  includeLabel.appendChild(document.createTextNode('✓'));
-  row.appendChild(includeLabel);
-
-  const excludeLabel = document.createElement('label');
-  excludeLabel.className = 'tag-filter-check tag-filter-check-exclude';
-  excludeLabel.title = `Exclude "${tag}"`;
-  const excludeCheckbox = document.createElement('input');
-  excludeCheckbox.type = 'checkbox';
-  excludeCheckbox.checked = state === 'exclude';
-  excludeCheckbox.setAttribute('aria-label', `Exclude tag "${tag}"`);
-  excludeCheckbox.addEventListener('change', () => setState(excludeCheckbox.checked ? 'exclude' : null));
-  excludeLabel.appendChild(excludeCheckbox);
-  excludeLabel.appendChild(document.createTextNode('✕'));
-  row.appendChild(excludeLabel);
+  });
 
   container.appendChild(row);
 }
@@ -518,7 +502,10 @@ tagFilterBtn.addEventListener('click', e => {
 });
 
 document.addEventListener('click', e => {
-  if (!tagFilterDropdown.contains(e.target)) closeTagFilterPanel();
+  // composedPath() is captured at dispatch time, so it stays accurate even if a handler earlier
+  // in the bubble phase rebuilds the panel's DOM and detaches e.target before this listener runs.
+  const path = e.composedPath ? e.composedPath() : [e.target];
+  if (!path.includes(tagFilterDropdown)) closeTagFilterPanel();
 });
 
 document.addEventListener('keydown', e => {
